@@ -1,0 +1,3 @@
+[submodule "basil"]
+	path = basil
+	url = https://github.com/Silab-Bonn/basil
