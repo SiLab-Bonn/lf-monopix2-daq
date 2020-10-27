@@ -1,3 +1,4 @@
 [submodule "basil"]
 	path = basil
 	url = https://github.com/Silab-Bonn/basil
+	branch = b4e57ec0de799b8ee789660f008f8bd639545e5e
