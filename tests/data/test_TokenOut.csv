@@ -1,0 +1,16 @@
+# bxid, col, row, tot
+     40,   5,  1,   16, sync clk
+    441,   5,  1,   15, async LE
+    842,   5,  1,   14, async LE
+   1243,   5,  1,   13, async LE 
+   1644,   5,  1,   13, async TE 
+   2044,   5,  1,   12, async TE 
+   2444,   5,  1,   11, async TE 
+   2844,   5,  1,   10, async TE 
+   3244,   5,  1,   09, async TE 
+   3644,   5,  1,   08, async TE
+   4041,   5,  1,   16, async TE
+   4442,   5,  1,   16, async TE
+   4843,   5,  1,   16, async TE
+#   3639,   5,  1,   16, async TE
+  10010,  -1,  -1, -1,eof
