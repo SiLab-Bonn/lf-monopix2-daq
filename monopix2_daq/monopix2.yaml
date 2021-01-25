@@ -10,7 +10,28 @@ transfer_layer:
         timeout  : 600
         bit_file : ../firmware/bit/monopix_mio.bit
         avoid_download : True
+#  - name  : intf
+#    type  : SiTcp
+#    init:
+#        ip : "192.168.10.17"
+#        udp_port : 4660
+#        tcp_port : 24
+#        tcp_connection : True
+
 hw_drivers:
+#  - name      : i2c
+#    type      : i2c
+#    interface : intf
+#    base_addr : 0x2000#
+
+#  - name      : GPAC
+#    type      : GPAC
+#    hw_driver : i2c
+#    base_addr : 0x00000
+#    init:
+#        no_calibration : False
+#        no_power_reset : True
+
   - name      : tb
     type      : monopix2_daq.testbench
     interface : intf
@@ -19,8 +40,10 @@ hw_drivers:
   - name      : fifo
     type      : sram_fifo
     interface : intf
-    base_addr : 0x18000
-    base_data_addr: 0x1000000000000
+    base_addr : 0x18000              # MIO
+    base_data_addr: 0x1000000000000  # MIO
+#    base_addr : 0x200000000           # MIO3
+#    base_data_addr : 0x100000000      # MIO3
 
   - name      : gpio
     type      : gpio
@@ -32,6 +55,17 @@ hw_drivers:
     type      : spi
     interface : intf
     base_addr : 0x15000
+
+  - name      : tlu
+    type      : monopix2_daq.tlu_slave
+    interface : intf
+    base_addr : 0x10600
+    size      : 8
+
+  - name      : spi_dc
+    type      : spi
+    interface : intf
+    base_addr : 0x10b00
 
   - name      : data_rx       # 0
     type      : monopix2_daq.mono_data_rx
@@ -60,8 +94,9 @@ hw_drivers:
     base_addr : 0x10400
 
 registers:
-#  - name        : Curr_Mon
-#    type        : FunctionalRegister
+#  - name        : NTC
+#    type        : NTCRegister
+#    NTC_type   : TDK_NTCG16H
 #    hw_driver   : GPAC
 #    arg_names   : [ value ]
 #    arg_add     : { 'channel': 'ISRC0'}
@@ -70,6 +105,8 @@ registers:
     type        : StdRegister
     hw_driver   : gpio
     size        : 16
+    init        :
+        SLOW_RX : 0
     fields :
       - name    : READ_PATTERN
         size    : 1
@@ -77,10 +114,13 @@ registers:
       - name    : ResetBcid_WITH_TIMESTAMP
         size    : 1
         offset  : 10
+      - name    : SLOW_RX
+        size    : 1
+        offset  : 9      
       - name    : LVDS_Out
         size    : 1
         offset  : 8
-      - name    : EN_GATE
+      - name    : SW_SR_EN
         size    : 1
         offset  : 7
       - name    : ResetBcid
@@ -95,135 +135,249 @@ registers:
       - name    : Def_Conf
         size    : 1
         offset  : 3
-      - name    : Ld_Cnfg
+      - name    : En_Cnfg_Pix
         size    : 1
         offset  : 2
-      - name    : Ld_DAC
-        size    : 1
-        offset  : 1
       - name    : Rst
         size    : 1
         offset  : 0
 
+#  - name        : VDDD
+#    type        : FunctionalRegister
+#    hw_driver   : GPAC
+#    arg_names   : [value]
+#    arg_add     : {'channel': 'PWR0'}
+
+#  - name        : VDDA
+#    type        : FunctionalRegister
+#    hw_driver   : GPAC
+#    arg_names   : [value]
+#    arg_add     : {'channel': 'PWR1'}
+#    init        : 
+#        value : 1.8
+
+#  - name        : VDD_BCID_BUFF
+#    type        : FunctionalRegister
+#    hw_driver   : GPAC
+#    arg_names   : [value]
+#    arg_add     : {'channel': 'PWR2'}
+    
+#  - name        : VPC
+#    type        : FunctionalRegister
+#    hw_driver   : GPAC
+#    arg_names   : [value]
+#    arg_add     : {'channel': 'PWR3'}
+   
+#  - name        : BL
+#    type        : FunctionalRegister
+#    hw_driver   : GPAC
+#    arg_names   : [ value ]
+#    arg_add     : { 'channel': 'VSRC0'}
+    
+#  - name        : TH
+#    type        : FunctionalRegister
+#    hw_driver   : GPAC
+#    arg_names   : [ value ]
+#    arg_add     : { 'channel': 'VSRC1'}
+    
+#  - name        : VCascC 
+#    type        : FunctionalRegister
+#    hw_driver   : GPAC
+#    arg_names   : [ value ]
+#    arg_add     : { 'channel': 'VSRC2'}
+    
+#  - name        : VCascN
+#    type        : FunctionalRegister
+#    hw_driver   : GPAC
+#    arg_names   : [ value ]
+#    arg_add     : { 'channel': 'VSRC3'}
+
+#  - name        : PBias
+#    type        : FunctionalRegister
+#    hw_driver   : GPAC
+#    arg_names   : [ value ]
+#    arg_add     : { 'channel': 'ISRC10'}
+
+#  - name        : INJ_LO
+#    type        : FunctionalRegister
+#    hw_driver   : GPAC
+#    arg_names   : [ value ]
+#    arg_add     : { 'channel': 'INJ1'}
+#    init        :
+#        'DAC': {'offset': 0.0, 'gain': 0.49}
+ 
+
+#  - name        : INJ_HI
+#    type        : FunctionalRegister
+#    hw_driver   : GPAC
+#    arg_names   : [ value ]
+#    arg_add     : { 'channel': 'INJ0'}
+#    init        :
+#        'DAC': {'offset': 0.0, 'gain': 0.49}
+
   - name        : CONF_SR
     type        : StdRegister
     hw_driver   : spi
-    size        : 19267
+    size        : 294
     auto_start  : True 
     init        :
         BLRes     : 32
-        VAmp      : 31
-        VPFB      : 30
-        VPFoll    : 12
-        VNLoad    : 11
-        TDAC_LSB  : 48
-        Vsf       : 33
+        VAmp1     : 35
+        VAmp2     : 30
+        VPFB      : 29
+        VNFoll    : 28
+        VPFoll    : 26
+        VNLoad    : 25
+        VPLoad    : 24
+        TDAC_LSB  : 23
+        Vsf       : 22
+        Driver    : 21
         Mon_Vsf   : 1
         Mon_VPFB  : 0
-        Mon_VLoad : 0
-        Mon_VFoll : 0
-        Mon_VAmp  : 0
-        Mon_LSBdacL   : 0
+        Mon_VPLoad : 0
+        Mon_VNLoad : 0
+        Mon_VNFoll     : 0
+        Mon_VPFoll     : 0
+        Mon_VAmp1 : 0
+        Mon_VAmp2 : 0
+        Mon_TDAC_LSB   : 0
         Mon_BLRes : 0
+        Mon_Driver : 0
         EnDataCMOS    : 1
         EnDataLVDS    : 0
+        EnAnaBuffer: 1
         EnTestPattern : 0
+        DelayROConf   : 4
         EnColRO   : 0xFFFFFFFFFFFFFF
-        InjEnCol  : 32
-        EnMonitorCol  : 32
-        TrimLd0   : 1
-        TrimLd1   : 1
-        TrimLd2   : 1
-        TrimLd3   : 1
+        InjEnCol  : 0xFFFFFFFFFFFFDF
+        EnMonitorCol: 32
+        TrimLd    : 15
         EnInjLd   : 1
         EnMonitorLd   : 1
         EnPreLd   : 1
-
+        EnSRDCol  : 0x0
+        EnSoDCol  : 2
     fields:
-        - name     : Vsf
+        - name     : Driver
           size     : 6
           offset   : 5
         - name     : TDAC_LSB
           size     : 6
           offset   : 11
-        - name     : VNLoad
+        - name     : Vsf
           size     : 6
           offset   : 17
-        - name     : VPFoll
+        - name     : VPLoad
           size     : 6
-          offset   : 23
-        - name     : VPFB
+          offset   : 23   
+        - name     : VNLoad
           size     : 6
           offset   : 29
-        - name     : VAmp
+        - name     : VNFoll
           size     : 6
           offset   : 35
-        - name     : BLRes
+        - name     : VPFoll
           size     : 6
           offset   : 41
+        - name     : VPFB
+          size     : 6
+          offset   : 47
+        - name     : VAmp2
+          size     : 6
+          offset   : 53
+        - name     : VAmp1
+          size     : 6
+          offset   : 59
+        - name     : BLRes
+          size     : 6
+          offset   : 65
 
+        - name     : Mon_Driver
+          size     : 1
+          offset   : 66
+        - name     : Mon_TDAC_LSB
+          size     : 1
+          offset   : 67
         - name     : Mon_Vsf
           size     : 1
-          offset   : 42
+          offset   : 68
+        - name     : Mon_VPLoad
+          size     : 1
+          offset   : 69
+        - name     : Mon_VNLoad
+          size     : 1
+          offset   : 70
+        - name     : Mon_VNFoll
+          size     : 1
+          offset   : 71
+        - name     : Mon_VPFoll
+          size     : 1
+          offset   : 72
         - name     : Mon_VPFB
           size     : 1
-          offset   : 43
-        - name     : Mon_VLoad
+          offset   : 73
+        - name     : Mon_VAmp2
           size     : 1
-          offset   : 44
-        - name     : Mon_VFoll
+          offset   : 74
+        - name     : Mon_VAmp1
           size     : 1
-          offset   : 45
-        - name     : Mon_VAmp
-          size     : 1
-          offset   : 46
-        - name     : Mon_LSBdacL
-          size     : 1
-          offset   : 47
+          offset   : 75
         - name     : Mon_BLRes
           size     : 1
-          offset   : 48
+          offset   : 76
+
         - name     : EnDataLVDS
           size     : 1
-          offset   : 49
+          offset   : 77
         - name     : EnDataCMOS
           size     : 1
-          offset   : 50
+          offset   : 78
         - name     : EnTestPattern
           size     : 1
-          offset   : 51
+          offset   : 79
+        - name     : DelayROConf
+          size     : 5
+          offset   : 84
+        - name     : EnAnaBuffer
+          size     : 1
+          offset   : 85
         - name     : EnColRO
           size     : 56
-          offset   : 107
+          offset   : 141
         - name     : InjEnCol
           size     : 56
-          offset   : 163
+          offset   : 197
         - name     : EnMonitorCol
           size     : 56
-          offset   : 219
-
-        - name     : TrimLd0
-          size     : 1
-          offset   : 220
-        - name     : TrimLd1
-          size     : 1
-          offset   : 221
-        - name     : TrimLd2
-          size     : 1
-          offset   : 222
-        - name     : TrimLd3
-          size     : 1
-          offset   : 223
+          offset   : 253
+        - name     : EnSRDCol
+          size     : 28
+          offset   : 281
+        - name     : EnSoDCol
+          size     : 5
+          offset   : 286
+        - name     : TrimLd
+          size     : 4
+          offset   : 290
         - name     : EnInjLd
           size     : 1
-          offset   : 224
+          offset   : 291
         - name     : EnMonitorLd
           size     : 1
-          offset   : 225
+          offset   : 292
         - name     : EnPreLd
           size     : 1
-          offset   : 226
+          offset   : 293
 
-        - name     : Pixels
-          size     : 19040
-          offset   : 19266
+  - name        : CONF_DC
+    type        : StdRegister
+    hw_driver   : spi_dc
+    size        : 680
+    auto_start  : True 
+    fields:
+        - name     : Col0
+          size     : 340
+          offset   : 339
+        - name     : Col1
+          size     : 340
+          offset   : 679

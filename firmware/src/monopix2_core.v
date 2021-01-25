@@ -48,11 +48,10 @@ module monopix2_core (
    output wire nRst,           //input logic
 
 // Chip Configuration
-   output wire SR_EN,           //input logic 
    output wire Si,              //input logic 
    output wire Def_Cnfg,        //input logic 
-   output wire Ld    ,          //input logic 
-   output wire En_Cnfg_Pix,     //input logic 
+   output wire Ld,          //input logic 
+   output wire En_Cnfg_Pix,         //input logic 
    input wire So,               //output logic 
 
 // Chip RO
@@ -100,7 +99,10 @@ localparam TS_MON_BASEADDR = 16'h0a00;
 localparam TS_MON_HIGHADDR = 16'h0b00-1;
 
 localparam SPI_BASEADDR = 16'h5000;
-localparam SPI_HIGHADDR = 16'h8000-1;
+localparam SPI_HIGHADDR = 16'h6000-1; // 36*2+16=0x58
+
+localparam SPI_PIX_BASEADDR = 16'h0b00;
+localparam SPI_PIX_HIGHADDR = 16'h1000-1; // 85*2+16=0x272
 
 localparam FIFO_BASEADDR = 16'h8000;
 localparam FIFO_HIGHADDR = 16'h9000-2;
@@ -195,20 +197,22 @@ gpio
     .BUS_WR(BUS_WR),
     .IO(GPIO_OUT)
     ); 
-wire EN_Ld_CONF, En_Cnfg_Pix_CONF;
+
+wire EN_Cnfg_CONF;
 wire EN_ClkBX_CONF, EN_ClkOut_CONF,SW_LVDS_Out_CONF;
 wire Rst_CONF,ResetBcid_CONF,EN_ResetBcid_WITH_TIMESTAMP;
-wire SW_SR_EN_CONF;
+wire SW_SR_EN_CONF, SW_SLOW_RX_CONF;
 
 assign Rst_CONF = GPIO_OUT[0];
-assign EN_Ld_CONF = GPIO_OUT[1];
-assign En_Cnfg_Pix_CONF = GPIO_OUT[2];
+//assign EN_Ld_DAC_CONF = GPIO_OUT[1];
+assign En_Cnfg_Pix = GPIO_OUT[2];
 assign Def_Cnfg = GPIO_OUT[3];
 assign EN_ClkBX_CONF = GPIO_OUT[4];
 assign EN_ClkOut_CONF = GPIO_OUT[5];
 assign ResetBcid_CONF = GPIO_OUT[6];
 assign SW_SR_EN_CONF= GPIO_OUT[7];
 assign SW_LVDS_Out_CONF = GPIO_OUT[8];
+assign SW_SLOW_RX_CONF = GPIO_OUT[9];
 assign EN_ResetBcid_WITH_TIMESTAMP = GPIO_OUT[10];
 
 ////////////////////////////////////////////
@@ -280,12 +284,15 @@ timestamp640 #(
 // SR config
 wire CONF_CLK;
 wire SCLK, SDI, SDO, SEN, SLD;
+wire SCLK_Cnfg, SDI_Cnfg, SEN_Cnfg, SLD_Cnfg;
 assign CONF_CLK = CLK8;
-spi #( 
+spi 
+#( 
     .BASEADDR(SPI_BASEADDR), 
     .HIGHADDR(SPI_HIGHADDR),
-    .MEM_BYTES(2409) 
-) spi_conf (
+    .MEM_BYTES(37) 
+    )  spi_dac
+(
     .BUS_CLK(BUS_CLK),
     .BUS_RST(BUS_RST),
     .BUS_ADD(BUS_ADD),
@@ -303,24 +310,25 @@ spi #(
     .SLD(SLD)
 );
 reg [3:0] delay_cnt;
-always@(posedge CONF_CLK)
-    if(BUS_RST)
-        delay_cnt <= 0;
-    else if(SEN)
-        delay_cnt <= 4'b1111;
-    else if(delay_cnt != 0)
-        delay_cnt <= delay_cnt - 1;
-assign ClkSR = SCLK;
-assign Si = SDI;
-assign SDO = So;  
-assign En_Cnfg_Pix = SLD & En_Cnfg_Pix_CONF;
-assign Ld = SLD & EN_Ld_CONF;
+//always@(posedge CONF_CLK)
+//    if(BUS_RST)
+//        delay_cnt <= 0;
+//    else if(SEN)
+//        delay_cnt <= 4'b1111;
+//    else if(delay_cnt != 0)
+//        delay_cnt <= delay_cnt - 1;
+assign ClkSR = En_Cnfg_Pix? SCLK_Cnfg:SCLK;
+assign Si = En_Cnfg_Pix? SDI_Cnfg:SDI;
+assign SDO = So;
+assign Ld = En_Cnfg_Pix? SLD_Cnfg:SLD;
 
-wire GATE; //do we need this? maybe later yes....
-pulse_gen #( 
-    .BASEADDR(PULSE_GATE_BASEADDR), 
-    .HIGHADDR(PULSE_GATE_HIGHADDR)
-) pulse_gen_gate (
+spi 
+#( 
+    .BASEADDR(SPI_PIX_BASEADDR), 
+    .HIGHADDR(SPI_PIX_HIGHADDR),
+    .MEM_BYTES(85) 
+)  spi_cnfg
+(
     .BUS_CLK(BUS_CLK),
     .BUS_RST(BUS_RST),
     .BUS_ADD(BUS_ADD),
@@ -328,11 +336,34 @@ pulse_gen #(
     .BUS_RD(BUS_RD),
     .BUS_WR(BUS_WR),
 
-    .PULSE_CLK(CLK40),
+    .SPI_CLK(CONF_CLK),
+
+    .SCLK(SCLK_Cnfg),
+    .SDI(SDI_Cnfg),
+    .SDO(SDO),
+    .EXT_START(1'b0),
+    .SEN(SEN_Cnfg),
+    .SLD(SLD_Cnfg)
+);
+
+//GATE
+wire GATE;
+pulse_gen
+#( 
+    .BASEADDR(PULSE_GATE_BASEADDR), 
+    .HIGHADDR(PULSE_GATE_HIGHADDR)
+)     pulse_gen_gate(
+    .BUS_CLK(BUS_CLK),
+    .BUS_RST(BUS_RST),
+    .BUS_ADD(BUS_ADD),
+    .BUS_DATA(BUS_DATA[7:0]),
+    .BUS_RD(BUS_RD),
+    .BUS_WR(BUS_WR),
+
+    .PULSE_CLK(~CLK40),
     .EXT_START(SLD),
     .PULSE(GATE)
 );
-assign SR_EN = SW_SR_EN_CONF? GATE:1'b0;
 
 ////////////////////////////////////////////
 /// Data RX
@@ -348,30 +379,32 @@ mono_data_rx #(
     .BUS_DATA(BUS_DATA),
     .BUS_RD(BUS_RD),
     .BUS_WR(BUS_WR),
-
-    .CLK_BX(CLK40),
+    
+    //.CLK_BX(~CLK40),
     .RX_TOKEN(TokOut), 
     .RX_DATA(RX_DATA), 
-    .RX_CLK(~CLK40),
+    .RX_CLK(~RX_CLK),
     .RX_READ(Read), 
     .RX_FREEZE(Freeze), 
     .TIMESTAMP(TIMESTAMP),
-
+    
     .FIFO_READ(RX_FIFO_READ),
     .FIFO_EMPTY(RX_FIFO_EMPTY),
     .FIFO_DATA(RX_FIFO_DATA),
-
+    
     .LOST_ERROR()
-); 
+);
+assign RX_CLK = SW_SLOW_RX_CONF? CLK40:CLK160;
 assign RX_DATA= SW_LVDS_Out_CONF? LVDS_Out : DataOut;
 ODDR clk_bx_gate(.D1(EN_ClkBX_CONF), .D2(1'b0), .C(CLK40), .CE(1'b1), .R(1'b0), .S(1'b0), .Q(ClkBX) );
 //assign ClkBX= CLK40 & EN_ClkBX_CONF;
-assign ClkOut= CLK40 & EN_ClkOut_CONF;
+assign ClkOut= RX_CLK & EN_ClkOut_CONF;
 
 ////////////////////////////////////////////
 // INJECTION
 `ifdef CODE_FOR_MIO3
-pulse_gen640 #( 
+pulse_gen640
+#( 
     .BASEADDR(PULSE_INJ_BASEADDR), 
     .HIGHADDR(PULSE_INJ_HIGHADDR),
     .ABUSWIDTH(16),
@@ -387,7 +420,7 @@ pulse_gen640 #(
 
     .PULSE_CLK320(CLK320),
     .PULSE_CLK160(CLK160),
-    .PULSE_CLK(CLK40),
+    .PULSE_CLK(~CLK40),
     .EXT_START(GATE),
     .PULSE({InjLoopOut,Injection}),
     .DEBUG(DEBUG)
@@ -404,13 +437,15 @@ pulse_gen #(
     .BUS_RD(BUS_RD),
     .BUS_WR(BUS_WR),
 
-    .PULSE_CLK(CLK40),
+    .PULSE_CLK(~CLK40),
     .EXT_START(GATE),
     .PULSE(Injection)
 );
 assign InjLoopOut = Injection;
 `endif
-timestamp640 #(
+
+timestamp640
+#(
     .BASEADDR(TS_INJ_BASEADDR),
     .HIGHADDR(TS_INJ_HIGHADDR),
     .IDENTIFIER(4'b0101)
@@ -426,8 +461,8 @@ timestamp640 #(
     .CLK160(CLK160),
     .CLK40(CLK40),
     .DI(InjLoopIn),   //loop back of injection (TX2 or flatcalbe)
-    .EXT_TIMESTAMP(TIMESTAMP),
     .TIMESTAMP_OUT(),
+    .EXT_TIMESTAMP(TIMESTAMP),
     .EXT_ENABLE(GATE),
 
     .FIFO_READ(TS_INJ_FIFO_READ),
@@ -439,13 +474,12 @@ timestamp640 #(
     .FIFO_DATA_TRAILING()
 );
 
-////////////////////////////////////////////
-/// HITOR
-timestamp640 #(
+timestamp640
+#(
     .BASEADDR(TS_MON_BASEADDR),
     .HIGHADDR(TS_MON_HIGHADDR),
     .IDENTIFIER(4'b0110)
-) i_timestamp160_mon (
+)i_timestamp160_mon(
     .BUS_CLK(BUS_CLK),
     .BUS_ADD(BUS_ADD),
     .BUS_DATA(BUS_DATA),
@@ -470,10 +504,9 @@ timestamp640 #(
     .FIFO_DATA_TRAILING(TS_MON_FIFO_DATA_TRAILING)
 );
 
-////////////////////////////////////////////
-// Reset
+//reset
 reg ResetBcid_reg;
-assign ResetBcid = EN_ResetBcid_WITH_TIMESTAMP ? ResetBcid_reg : ResetBcid_CONF;
+assign ResetBcid =EN_ResetBcid_WITH_TIMESTAMP ? ResetBcid_reg : ResetBcid_CONF;
 always@(negedge CLK40) begin
     if (BUS_RST)
         ResetBcid_reg <= 1'b0;

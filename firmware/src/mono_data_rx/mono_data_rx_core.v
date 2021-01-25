@@ -13,12 +13,12 @@ module bin_to_gray6 (
 );
 
 always@(*) begin
-    bin_out = {gray_input[5],
-                bin_out[5] ^ gray_input[4],
-                bin_out[4] ^ gray_input[3],
-                bin_out[3] ^ gray_input[2],
-                bin_out[2] ^ gray_input[1],
-                bin_out[1] ^ gray_input[0]};
+    bin_out[5] <= gray_input[5];
+    bin_out[4] <= bin_out[5] ^ gray_input[4];
+    bin_out[3] <= bin_out[4] ^ gray_input[3];
+    bin_out[2] <= bin_out[3] ^ gray_input[2];
+    bin_out[1] <= bin_out[2] ^ gray_input[1];
+    bin_out[0] <= bin_out[1] ^ gray_input[0];
 end
 
 endmodule
@@ -28,7 +28,7 @@ module mono_data_rx_core
     parameter ABUSWIDTH = 16,
     parameter IDENTYFIER = 4'b0000
 )(
-    input wire CLK_BX,
+    //input wire CLK_BX,
     input wire RX_TOKEN, RX_DATA, RX_CLK,
     output reg RX_READ, RX_FREEZE,
     input wire [63:0] TIMESTAMP,
@@ -56,27 +56,27 @@ assign SOFT_RST = (BUS_ADD==0 && BUS_WR);
 wire RST;
 assign RST = BUS_RST | SOFT_RST;
 
-reg CONF_EN = 1'b0;
-reg CONF_DISSABLE_GRAY_DEC = 1'b0;
-reg CONF_FORCE_READ = 1'b0;
-reg [7:0] CONF_START_FREEZE = 8'd63;
-reg [7:0] CONF_STOP_FREEZE = 8'd90;
-reg [7:0] CONF_START_READ = 8'd65;
-reg [7:0] CONF_STOP_READ = 8'd67;
-reg [7:0] CONF_STOP = 8'd100;
-reg [7:0] CONF_READ_SHIFT = 8'd56;
+reg CONF_EN=1'b0;
+reg CONF_DISSABLE_GRAY_DEC=1'b0;
+reg CONF_FORCE_READ=1'b0;
+reg [15:0] CONF_START_FREEZE=16'd252;
+reg [15:0] CONF_STOP_FREEZE=16'd312;
+reg [15:0] CONF_START_READ=16'd260;
+reg [15:0] CONF_STOP_READ=16'd268;
+reg [15:0] CONF_STOP=16'd320;
+reg [15:0] CONF_READ_SHIFT=16'd60;
 
 always @(posedge BUS_CLK) begin
     if(RST) begin
         CONF_EN <= 0;
         CONF_DISSABLE_GRAY_DEC <= 0;
-        CONF_FORCE_READ <= 0;
-        CONF_START_FREEZE <= 63;
-        CONF_START_READ <= 65;
-        CONF_STOP_READ <= 67;
-        CONF_STOP_FREEZE <= 90;
-        CONF_STOP <= 100;
-        CONF_READ_SHIFT <=56; // (27<<2+2)
+        CONF_FORCE_READ<=0;
+        CONF_START_FREEZE <= 16'd252;
+        CONF_START_READ <= 16'd260;
+        CONF_STOP_READ <= 16'd268;
+        CONF_STOP_FREEZE <= 16'd312;
+        CONF_STOP <= 16'd320;
+        CONF_READ_SHIFT <=16'd60; //(27+4-1)<<1
     end
     else if(BUS_WR) begin
         if(BUS_ADD == 2) begin
@@ -85,17 +85,29 @@ always @(posedge BUS_CLK) begin
             CONF_FORCE_READ <= BUS_DATA_IN[2];
           end
           else if(BUS_ADD == 4)
-            CONF_START_FREEZE <= BUS_DATA_IN;
+            CONF_START_FREEZE[7:0] <= BUS_DATA_IN;
           else if(BUS_ADD == 5)
-            CONF_STOP_FREEZE <= BUS_DATA_IN;
+            CONF_START_FREEZE[15:8] <= BUS_DATA_IN;
           else if(BUS_ADD == 6)
-            CONF_START_READ <= BUS_DATA_IN;
+            CONF_STOP_FREEZE[7:0] <= BUS_DATA_IN;
           else if(BUS_ADD == 7)
-            CONF_STOP_READ <= BUS_DATA_IN;
+            CONF_STOP_FREEZE[15:8] <= BUS_DATA_IN;
           else if(BUS_ADD == 8)
-            CONF_STOP <= BUS_DATA_IN;
+            CONF_START_READ[7:0] <= BUS_DATA_IN;
           else if(BUS_ADD == 9)
-            CONF_READ_SHIFT <= BUS_DATA_IN;
+            CONF_START_READ[15:8] <= BUS_DATA_IN;
+          else if(BUS_ADD == 10)
+            CONF_STOP_READ[7:0] <= BUS_DATA_IN;
+          else if(BUS_ADD == 11)
+            CONF_STOP_READ[15:8] <= BUS_DATA_IN;
+          else if(BUS_ADD == 12)
+            CONF_STOP[7:0] <= BUS_DATA_IN;
+          else if(BUS_ADD == 13)
+            CONF_STOP[15:8] <= BUS_DATA_IN;
+          else if(BUS_ADD == 14)
+            CONF_READ_SHIFT[7:0] <= BUS_DATA_IN;
+          else if(BUS_ADD == 15)
+            CONF_READ_SHIFT[15:8] <= BUS_DATA_IN;
     end
 end
 
@@ -111,19 +123,31 @@ always @(posedge BUS_CLK) begin
         else if(BUS_ADD == 3)
             BUS_DATA_OUT <= LOST_DATA_CNT;
         else if(BUS_ADD == 4)
-            BUS_DATA_OUT <= CONF_START_FREEZE;
+            BUS_DATA_OUT <= CONF_START_FREEZE[7:0];
         else if(BUS_ADD == 5)
-            BUS_DATA_OUT <= CONF_STOP_FREEZE;
+            BUS_DATA_OUT <= CONF_START_FREEZE[15:8];
         else if(BUS_ADD == 6)
-            BUS_DATA_OUT <= CONF_START_READ;
+            BUS_DATA_OUT <= CONF_STOP_FREEZE[7:0];
         else if(BUS_ADD == 7)
-            BUS_DATA_OUT <= CONF_STOP_READ;
+            BUS_DATA_OUT <= CONF_STOP_FREEZE[15:8];
         else if(BUS_ADD == 8)
-            BUS_DATA_OUT <= CONF_STOP;
-		else if(BUS_ADD == 9)
+            BUS_DATA_OUT <= CONF_START_READ[7:0];
+        else if(BUS_ADD == 9)
+            BUS_DATA_OUT <= CONF_START_READ[15:8];
+        else if(BUS_ADD == 10)
+            BUS_DATA_OUT <= CONF_STOP_READ[7:0];
+        else if(BUS_ADD == 11)
+            BUS_DATA_OUT <= CONF_STOP_READ[15:8];
+        else if(BUS_ADD == 12)
+            BUS_DATA_OUT <= CONF_STOP[7:0];
+        else if(BUS_ADD == 13)
+            BUS_DATA_OUT <= CONF_STOP[15:8];
+		else if(BUS_ADD == 14)
             BUS_DATA_OUT <= CONF_READ_SHIFT[7:0];
+		else if(BUS_ADD == 15)
+            BUS_DATA_OUT <= CONF_READ_SHIFT[15:8];
          else if (BUS_ADD ==18)  ///debug
-            BUS_DATA_OUT <= TIMESTAMP[7:0];
+            BUS_DATA_OUT <= TIMESTAMP[8:0];
         else
             BUS_DATA_OUT <= 8'b0;
     end
@@ -156,7 +180,7 @@ always@(posedge RX_CLK)
 	     TOKEN_FF <= {TOKEN_FF[2:0],RX_TOKEN};
 wire TOKEN_SYNC;
 assign TOKEN_SYNC = ~TOKEN_FF[1] & TOKEN_FF[0];
-reg TOKEN_NEXT;
+reg TOKEN_NEXT;  //TODO delete?
 
 always@(posedge RX_CLK)
     if (RST_SYNC) begin
@@ -171,13 +195,13 @@ always@(posedge RX_CLK)
 parameter NOP=5'd0, WAIT_ONE = 5'd1, NOP_NEXT=5'd2, WAIT_NEXT = 5'd3, WAIT_TWO = 5'd4, WAIT_TWO_NEXT = 5'd5;
 reg [4:0] state, next_state;
 
-always@(posedge CLK_BX)
+always@(posedge RX_CLK)
  if(RST_SYNC)
      state <= NOP;
   else
      state <= next_state;
      
-reg [7:0] DelayCnt;
+reg [15:0] DelayCnt;
 
 always@(*) begin : set_next_state
     next_state = state; //default
@@ -186,7 +210,7 @@ always@(*) begin : set_next_state
             if((TOKEN_FF[0] & CONF_EN) | FORCE_READ)  //TODO if state!=NOP then FORACE_READ will be ignored..
                 next_state = WAIT_ONE;   
         WAIT_ONE:
-		    if ( (DelayCnt == CONF_STOP_FREEZE - 2 ) & TOKEN_FF[0])
+		      if ( (DelayCnt == CONF_STOP_FREEZE - 2 ) & TOKEN_FF[0])
 				        next_state = WAIT_TWO;
             else if (DelayCnt == CONF_STOP) begin
                 if(!RX_FREEZE & TOKEN_FF[0])
@@ -210,30 +234,28 @@ always@(*) begin : set_next_state
             end
         WAIT_TWO_NEXT:
               next_state =WAIT_NEXT;
-        default:
-            next_state = state;
     endcase
 end
      
-always@(posedge CLK_BX)
+always@(posedge RX_CLK)
 if(RST_SYNC || state == NOP || state == NOP_NEXT)
     DelayCnt <= 0;
 else if (state == WAIT_TWO || state == WAIT_TWO_NEXT )
     DelayCnt <= CONF_START_READ - 2;
-else if(DelayCnt != 8'hff)
+else if(DelayCnt != 16'hffff)
     DelayCnt <= DelayCnt + 1;
 	 
 
-always@(posedge CLK_BX)
+always@(posedge RX_CLK)  
     if(RST_SYNC)
         TOKEN_NEXT <= 1'b0;
 	 else if(DelayCnt == CONF_STOP_READ + 4) //should be +1
         TOKEN_NEXT <= TOKEN_FF[0];
 
-always@(posedge CLK_BX)
+always@(posedge RX_CLK)
     RX_READ <= (DelayCnt >= CONF_START_READ && DelayCnt < CONF_STOP_READ); 
 
-always@(posedge CLK_BX) begin
+always@(posedge RX_CLK) begin
     if(RST_SYNC)
         RX_FREEZE <= 1'b0;
     else if(DelayCnt == CONF_START_FREEZE)
@@ -243,16 +265,12 @@ always@(posedge CLK_BX) begin
 end         
     
 reg [1:0] read_dly;
-always@(posedge CLK_BX)
-    read_dly[1:0] <= {read_dly[0], RX_READ};
-    
-reg [1:0] read_out_dly;
 always@(posedge RX_CLK)
-    read_out_dly <= {read_out_dly[0], read_dly[1]};
+    read_dly[1:0] <= {read_dly[0], RX_READ};
     
 reg load;
 always@(posedge RX_CLK)
-    load <= read_out_dly[0] & !read_out_dly[1];
+    load <= !read_dly[0] & read_dly[1]; /// make pulse from negedge of READ
     
 reg [6:0] cnt;
 always@(posedge RX_CLK)
@@ -260,19 +278,19 @@ always@(posedge RX_CLK)
         cnt <= -1;
     else if(load)
         cnt <= 0;
-    else if(cnt != 7'h7f)
+    else if(cnt != 7'hff)
         cnt <= cnt + 1;
 
 reg [26:0] ser_neg;
 always@(negedge RX_CLK)
-    ser_neg <= {ser_neg[25:0], RX_DATA};
+    ser_neg <= {ser_neg[26:0], RX_DATA};
     
 reg [26:0] ser;
 always@(posedge RX_CLK)
-    ser <= {ser[25:0], RX_DATA};
+    ser <= {ser[26:0], RX_DATA};
 
 wire store_data;
-assign store_data = (cnt == CONF_READ_SHIFT[7:1]);
+assign store_data = (cnt == CONF_READ_SHIFT[15:1]);
 
 reg [26:0] data_out;
 wire [101:0] data_to_cdc; //TODO make data smaller.
