@@ -98,7 +98,7 @@ class Monopix2(Dut):
                 self.logger.error("inj:set_inj_phase={0:d} PHASE_DES={1:x}".format(inj_phase, self["inj"]["PHASE_DES"]))
         self["inj"]["EN"] = ext
         
-        self.logger.info("inj:{0.4f},{1:.4f} inj_width:{2:d} inj_delay:{3:d} inj_phase:{4:d},{5:x} inj_n:{6:d} delay:{7:d} ext:{8:d}".format(
+        self.logger.info("inj:{0:.4f},{1:.4f} inj_width:{2:d} inj_delay:{3:d} inj_phase:{4:d},{5:x} inj_n:{6:d} delay:{7:d} ext:{8:d}".format(
             inj_high, inj_low, inj_width, inj_delay, inj_phase, inj_phase_des, inj_n, delay, int(ext)))
 
     def start_inj(self, inj_low=None, wait=False):
