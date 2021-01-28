@@ -249,8 +249,8 @@ registers:
         EnTestPattern : 0
         DelayROConf   : 4
         EnColRO   : 0xFFFFFFFFFFFFFF
-        InjEnCol  : 0xFFFFFFFFFFFFDF
-        EnMonitorCol: 32
+        InjEnCol  : 0xFFFFFFFFEFFFFF
+        EnMonitorCol: 0x00000000E00000
         TrimLd    : 15
         EnInjLd   : 1
         EnMonitorLd   : 1

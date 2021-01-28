@@ -439,9 +439,9 @@ pulse_gen #(
 
     .PULSE_CLK(~CLK40),
     .EXT_START(GATE),
-    .PULSE(Injection)
+    .PULSE(InjLoopOut)
 );
-assign InjLoopOut = Injection;
+assign Injection = ~InjLoopOut;
 `endif
 
 timestamp640

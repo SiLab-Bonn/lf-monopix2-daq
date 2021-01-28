@@ -33,11 +33,12 @@ class TestMonopix2(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         daq_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__))) #../
-        rtl_dir=os.path.join(daq_dir,"rtl")
-        print(rtl_dir)
+        print("daq_dir", daq_dir)
+        rtl_dir=os.path.join(os.path.dirname(os.path.abspath(__file__)),"rtl")
+        print("rtl_dir", rtl_dir)
 
-        #os.environ['SIM'] = 'questa'
-        os.environ['SIM'] = 'icarus'
+        os.environ['SIM'] = 'questa'
+        #os.environ['SIM'] = 'icarus'
         if os.environ['SIM']=='icarus':
             cls.extra_defines.append('COLS=2')
 
@@ -69,7 +70,7 @@ class TestMonopix2(unittest.TestCase):
             extra = '\nVSIM_ARGS += -wlf /tmp/monopix2_{0:s}.wlf {1:s}\n'.format(cls.option, sdf_file) # -debugDB -t 1ps  for debugging
         )
 
-        with open(daq_dir + '/monopix2_daq/monopix2_sim.yaml', 'r') as f:
+        with open(daq_dir + '/monopix2_daq/monopix2.yaml', 'r') as f:
             conf = yaml.safe_load(f)
         cls.dut = monopix2.Monopix2(conf=conf,no_power_reset=False)
         cls.hit_file.reverse()
