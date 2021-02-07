@@ -65,9 +65,22 @@ class Monopix2(Dut):
         fw_version = self.get_fw_version()
         logging.info("Firmware version: {0}".format(fw_version))
         self['CONF_SR'].set_size(self["CONF_SR"]._conf['size'])
+        self['CONF']['Def_Conf'] = 1
+        self['CONF'].write()
+        self.power_on()
+        self._write_global_conf()
+        mask=self._cal_mask("none")
+        self._write_pixel_mask("EnPre", mask, over_write=True)
+        self._write_pixel_mask("EnInj", mask, over_write=True)
+        self._write_pixel_mask("EnMonitor", mask, over_write=True)
+        self['CONF']['Def_Conf'] = 0
+        self['CONF'].write()
 
     def get_fw_version(self):
         return self['intf'].read(0x10000, 1)[0]
+
+    def power_on(self):
+        pass
 
     def set_inj_all(self, inj_high=0.6, inj_low=0.2,
                     inj_n=100, inj_width=5000, inj_delay=5000, inj_phase=-1,
@@ -86,30 +99,29 @@ class Monopix2(Dut):
                 self.logger.error("inj:set_inj_phase={0:d} PHASE_DES={1:x}".format(inj_phase, self["inj"]["PHASE_DES"]))
         self["inj"]["EN"] = ext
         
-        self.logger.info("inj:{0.4f},{1:.4f} inj_width:{2:d} inj_delay:{3:d} inj_phase:{4:d},{5:x} inj_n:{6:d} delay:{7:d} ext:{8:d}".format(
+        self.logger.info("inj:{0:.4f},{1:.4f} inj_width:{2:d} inj_delay:{3:d} inj_phase:{4:d},{5:x} inj_n:{6:d} delay:{7:d} ext:{8:d}".format(
             inj_high, inj_low, inj_width, inj_delay, inj_phase, inj_phase_des, inj_n, delay, int(ext)))
 
-    def start_inj(self, inj_low=None, wait=False):
+    def start_inj(self, inj_low=None):
         self.logger.info("start_inj:{0:.4f},{1:.4f}".format(self["SR_CONF"]["VH"], self["SR_CONF"]["VH"]))
         self["inj"].start()
-        while self["inj"].is_done() != 1 and wait:
+        while self["inj"].is_done() != 1:
             time.sleep(0.001)
 
 # ###########################################     
 # ### Configure the Shift Register
     def _write_global_conf(self):
-        self.dut['CONF']['Def_Conf'] = 1 # active low
-        self.dut['CONF']['Ld_DAC'] = 1
-        self.dut['CONF'].write()
-        self.dut['CONF_SR'].write() 
-        while not self.dut['CONF_SR'].is_ready:
+        self['CONF']['En_Cnfg_Pix'] = 0
+        self['CONF'].write()
+        self['CONF_SR'].write() 
+        while not self['CONF_SR'].is_ready:
             time.sleep(0.001)
-        self.dut['CONF']['Ld_DAC'] = 0
-        self.dut['CONF'].write()
+        self['CONF']['Def_Conf'] = 0
+        self['CONF'].write()
 
     def set_global(self,**kwarg):
         """ kwarg must be like
-         BLRes=32, VAmp=32, VPFB=32, VPFoll=12, VPLoad=11, Vfs=32, TDAC_LSB=32
+         BLRes=32, VAmp1=32, VPFB=32, VPFoll=12, VPLoad=11, Vfs=32, TDAC_LSB=32
         """
         for k in kwarg.keys():
             self["CONF_SR"][k] = kwarg[k]
@@ -122,54 +134,58 @@ class Monopix2(Dut):
     def _write_pixel_mask(self, bit, mask, ro_off=False, over_write=False):
         if ro_off:
             # Readout off
-            ClkBX = self.dut['CONF']['ClkBX'].tovalue()
-            ClkOut = self.dut['CONF']['ClkOut'].tovalue()
-            self.dut['CONF']['ClkOut'] = 0
-            self.dut['CONF']['ClkBX'] = 0
-        self.dut['CONF_SR']["{0:s}Ld".format(bit)] = 0  # active low
+            ClkBX = self['CONF']['ClkBX'].tovalue()
+            ClkOut = self['CONF']['ClkOut'].tovalue()
+            self['CONF']['ClkOut'] = 0
+            self['CONF']['ClkBX'] = 0
+        self['CONF_SR']["{0:s}Ld".format(bit)] = 0  # active low
         if over_write:
             defval = np.all(mask)
-            self.dut['CONF_DC'].setall(defval)
-            self.dut['CONF_SR']['EnSRDCol'].setall(True)
-            self.dut['CONF']['Ld_Cnfg'] = 0
-            self.dut['CONF'].write()
-            self.dut['CONF_SR'].write()
-            while not self.dut['CONF_SR'].is_ready:
+            self['CONF_DC'].setall(defval)
+            self['CONF_SR']['EnSRDCol'].setall(True)
+            self['CONF']['En_Cnfg_Pix'] = 0
+            self['CONF'].write()
+            self['CONF_SR'].write()
+            while not self['CONF_SR'].is_ready:
                 time.sleep(0.001)
-            self.dut['CONF']['Ld_Cnfg'] = 1
-            self.dut['CONF'].write()
-            self.dut['CONF_DC'].write()
-            while not self.dut['CONF_DC'].is_ready:
+            self['CONF']['En_Cnfg_Pix'] = 1
+            self['CONF'].write()
+            self['CONF_DC'].write()
+            while not self['CONF_DC'].is_ready:
                 time.sleep(0.001)
-            self.dut['CONF']['Ld_Cnfg'] = 0
-            arg = np.argwhere(mask == defval)
+            self['CONF']['En_Cnfg_Pix'] = 0
+            arg = np.argwhere(mask != defval)
         else:
-            arg = np.argwhere(self.dut.PIXEL_CONF[bit] != mask)
+            arg = np.argwhere(self.PIXEL_CONF[bit] != mask)
         uni = np.unique(arg[:, 0]//2)
+        print("=====sim=====uni", bit, uni)
         # set individual double col
         for dcol in uni:
-            self.dut['CONF_SR']['EnSRDCol'].setall(False)
-            self.dut['CONF_SR']['EnSRDCol'][dcol]=True
-            self.dut['CONF']['Ld_Cnfg'] = 0
-            self.dut['CONF'].write()
-            self.dut['CONF_SR'].write()
-            while not self.dut['CONF_SR'].is_ready:
+            self['CONF_SR']['EnSRDCol'].setall(False)
+            #print("=====sim=====dcol", type(dcol), dcol, type(self['CONF_SR']['EnSRDCol'][0]))
+            self['CONF_SR']['EnSRDCol'][dcol] = '1'
+            self['CONF']['En_Cnfg_Pix'] = 0
+            self['CONF'].write()
+            print("=====sim=====InjEnCol in write", self['CONF_SR']['InjEnCol'])
+            self['CONF_SR'].write()
+            while not self['CONF_SR'].is_ready:
                 time.sleep(0.001)
             # set pix_config
-            self.dut['CONF_DC']['Col0'] = bitarray.bitarray(list(mask[dcol*2+1, :]))
-            self.dut['CONF_DC']['Col1'] = bitarray.bitarray(list(mask[dcol*2, ::-1]))
-            self.dut['CONF']['Ld_Cnfg'] = 1
-            self.dut['CONF'].write()
-            self.dut['CONF_DC'].write()
-            while not self.dut['CONF_DC'].is_ready:
+            self['CONF_DC']['Col0'] = bitarray.bitarray(list(mask[dcol*2+1, :]))
+            self['CONF_DC']['Col1'] = bitarray.bitarray(list(mask[dcol*2, ::-1]))
+            self['CONF']['En_Cnfg_Pix'] = 1
+            self['CONF'].write()
+            self['CONF_DC'].write()
+            print("=====sim=====",dcol, self['CONF_DC'])
+            while not self['CONF_DC'].is_ready:
                 time.sleep(0.001)
-            self.dut['CONF']['Ld_Cnfg'] = 0
-        self.dut['CONF_SR']["{0:s}Ld".format(bit)] = 1
+            self['CONF']['En_Cnfg_Pix'] = 0
+        self['CONF_SR']["{0:s}Ld".format(bit)] = 1
         if ro_off:
-            self.dut['CONF']['ClkOut'] = ClkOut  # Readout OFF
-            self.dut['CONF']['ClkBX'] = ClkBX
-        self.dut['CONF'].write()
-        self.dut.PIXEL_CONF[bit] = mask
+            self['CONF']['ClkOut'] = ClkOut  # Readout OFF
+            self['CONF']['ClkBX'] = ClkBX
+        self['CONF'].write()
+        self.PIXEL_CONF[bit] = mask
 
     def _cal_mask(self, pix):
         mask = np.zeros([self.COL, self.ROW])
@@ -188,11 +204,11 @@ class Monopix2(Dut):
         return mask
 
     def set_preamp_en(self, pix="all", EnColRO="auto", Out='autoCMOS'):
-        mask = self._cal_pix(pix)
+        mask = self._cal_mask(pix)
         if EnColRO == "auto":
             self['CONF_SR']['EnColRO'].setall(False)
             for i in range(self.COL):
-                self['CONF_SR']['EnColRO'][i] = bool(np.any(self.PIXEL_CONF["EnPre"][i,:]))
+                self['CONF_SR']['EnColRO'][i] = bool(np.any(mask[i,:]))
         elif EnColRO == "all":
             self['CONF_SR']['EnColRO'].setall(True)
         elif EnColRO == "none":
@@ -224,7 +240,7 @@ class Monopix2(Dut):
         self._write_pixel_mask("EnPre", mask)
 
     def set_mon_en(self, pix="none"):
-        mask = self._cal_pix(pix)
+        mask = self._cal_mask(pix)
         self['CONF_SR']['EnMonitorCol'].setall(False)
         for i in range(self.COL):
             self['CONF_SR']['EnMonitorCol'][i] = bool(np.any(mask[i,:]))
@@ -234,10 +250,16 @@ class Monopix2(Dut):
         self.logger.info("set_mon_en pix: {0:d} {1:s}".format(len(arg), str(arg).replace("\n", " ")))
 
     def set_inj_en(self, pix="none"):
-        mask = self._cal_pix(pix)
-        self['CONF_SR']['InjEnCol'].setall(False)
+        mask = self._cal_mask(pix)
+        self['CONF_SR']['InjEnCol'].setall(True)
         for i in range(self.COL):
-            self['CONF_SR']['InjEnCol'][i] = bool(np.any(self.PIXEL_CONF["EnInj"][i, :]))
+            if np.any(mask[i, :]):
+                val='0'
+            else:
+                val='1'
+            print("=====sim=====InjEnCol", i, np.any(mask[i, :]), mask[i, :], val)
+            self['CONF_SR']['InjEnCol'][i] = val
+        print("=====sim=====InjEnCol", self['CONF_SR']['InjEnCol'])
         self._write_pixel_mask("EnInj", mask)
         
         arg = np.argwhere(self.PIXEL_CONF["EnInj"][:,:])
@@ -299,9 +321,12 @@ class Monopix2(Dut):
         while self["inj"].is_done() != 1:
             time.sleep(0.001)
             raw = np.append(raw, self['fifo'].get_data())
+            print("=====sim===== get_data len",len(raw),self["inj"].is_done())
             i = i+1
             if i > 10000:
                 break
+        for i in range(10):
+            print("=====sim===== get_data len", i, len(raw),self["inj"].is_done())
         time.sleep(wait)
         raw = np.append(raw, self['fifo'].get_data())
         if i > 10000:
@@ -325,14 +350,14 @@ class Monopix2(Dut):
             self['CONF'].write()
         time.sleep(wait)
 
-        self['intf'].read_str(0x10010+1, size=2)
-        self['intf'].read_str(0x10010+1, size=2)
-        self['intf'].read_str(0x10010+1, size=2)
+        #self['intf'].read_str(0x10010+1, size=2)
+        #self['intf'].read_str(0x10010+1, size=2)
+        #self['intf'].read_str(0x10010+1, size=2)
         self['CONF']['ResetBcid'] = 0
         self['CONF'].write()
-        self['intf'].read_str(0x10010+1, size=2)
-        self['intf'].read_str(0x10010+1, size=2)
-        self['intf'].read_str(0x10010+1, size=2)
+        #self['intf'].read_str(0x10010+1, size=2)
+        #self['intf'].read_str(0x10010+1, size=2)
+        #self['intf'].read_str(0x10010+1, size=2)
 
     def set_monoread(self, start_freeze=90, start_read=90+2, stop_read=90+2+2,
                      stop_freeze=90+37, stop=90+37+10,
