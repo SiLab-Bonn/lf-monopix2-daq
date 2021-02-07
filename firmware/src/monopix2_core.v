@@ -48,6 +48,7 @@ module monopix2_core (
    output wire nRst,           //input logic
 
 // Chip Configuration
+   output wire SR_EN,           //input logic 
    output wire Si,              //input logic 
    output wire Def_Cnfg,        //input logic 
    output wire Ld,          //input logic 
@@ -369,7 +370,7 @@ pulse_gen
 
 ////////////////////////////////////////////
 /// Data RX
-wire RX_DATA;
+wire RX_DATA, RX_CLK;
 mono_data_rx #(
    .BASEADDR(DATA_RX_BASEADDR),
    .HIGHADDR(DATA_RX_HIGHADDR),
