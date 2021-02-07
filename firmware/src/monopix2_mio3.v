@@ -69,14 +69,14 @@ module monopix2_mio3(
     output wire ClkBX,     //DOUT
     output wire ClkOut,    //DOUT
     output wire ClkSR,     //DOUT
-    output wire ResetBcid,   //DOUT
+    output wire ResetBcid, //DOUT
     output wire nRst,      //DOUT
 // Chip Configuration
     output wire SR_EN,     //DOUT
     output wire Si,        //DOUT
-    output wire Def_Conf,  //DOUT
-    output wire Ld_DAC,    //DIN
-    output wire Ld_Cnfg,   //DIN
+    output wire Def_Cnfg,  //DOUT
+    output wire Ld,        //DIN
+    output wire En_Cnfg_Pix,   //DIN
     input  wire So,        //DIN
 // Chip RO
     output wire Freeze,    //DOUT
@@ -521,9 +521,9 @@ monopix2_core i_monopix2_core(
 // Chip Configuration
     .SR_EN(SR_EN),           //DOUT13
     .Si(Si),                 //DOUT14
-    .Def_Conf(Def_Conf),
-    .Ld_DAC(Ld_DAC),         //DIN1
-    .Ld_Cnfg(Ld_Cnfg),
+    .Def_Cnfg(Def_Cnfg),
+    .Ld(Ld),         //DIN1
+    .En_Cnfg_Pix(En_Cnfg_Pix),
     .So(So),
 // Chip RO
     .Freeze(Freeze),       //DOUT1

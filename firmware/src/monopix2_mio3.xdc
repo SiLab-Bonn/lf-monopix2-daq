@@ -184,12 +184,12 @@ set_property PACKAGE_PIN W24 [get_ports Si]
 set_property IOSTANDARD LVCMOS33 [get_ports Si]
 
 # DOUT[8]
-set_property PACKAGE_PIN AB22 [get_ports Def_Conf]
-set_property IOSTANDARD LVCMOS33 [get_ports Def_Conf]
+set_property PACKAGE_PIN AB22 [get_ports Def_Cnfg]
+set_property IOSTANDARD LVCMOS33 [get_ports Def_Cnfg]
 
 # DOUT[9]
-set_property PACKAGE_PIN AC22 [get_ports Ld_Cnfg]
-set_property IOSTANDARD LVCMOS33 [get_ports Ld_Cnfg]
+set_property PACKAGE_PIN AC22 [get_ports Ld]
+set_property IOSTANDARD LVCMOS33 [get_ports Ld]
 
 # DOUT[10]
 set_property PACKAGE_PIN W20 [get_ports Freeze]
@@ -204,8 +204,8 @@ set_property PACKAGE_PIN N21 [get_ports Injection]
 set_property IOSTANDARD LVCMOS33 [get_ports Injection]
 
 # DOUT[13]
-set_property PACKAGE_PIN N22 [get_ports Ld_DAC]
-set_property IOSTANDARD LVCMOS33 [get_ports Ld_DAC]
+set_property PACKAGE_PIN N22 [get_ports En_Cnfg_Pix]
+set_property IOSTANDARD LVCMOS33 [get_ports En_Cnfg_Pix]
 
 # DIN[0]
 set_property PACKAGE_PIN M24 [get_ports DataOut]
