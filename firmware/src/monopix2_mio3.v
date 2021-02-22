@@ -65,28 +65,27 @@ module monopix2_mio3(
     output wire InjLoopOut, //TX2 or flatcable 5
     input wire TLU_RESET,       //RJ45
     input wire TLU_TRIGGER,     //RJ45
-// chip Clock & reset
-    output wire ClkBX,     //DOUT
-    output wire ClkOut,    //DOUT
-    output wire ClkSR,     //DOUT
-    output wire ResetBcid, //DOUT
-    output wire nRst,      //DOUT
+// Chip Reset & Clock
+    output wire ResetBcid, //DOUT0
+    output wire nRst,      //DOUT1
+    output wire ClkOut,    //DOUT2
+    output wire ClkBX,     //DOUT5
+    output wire ClkSR,     //DOUT11
 // Chip Configuration
-    output wire SR_EN,     //DOUT
-    output wire Si,        //DOUT
-    output wire Def_Cnfg,  //DOUT
-    output wire Ld,        //DIN
-    output wire En_Cnfg_Pix,   //DIN
-    input  wire So,        //DIN
+    output wire En_Cnfg_Pix,   //DOUT7
+    output wire Def_Cnfg,  //DOUT8
+    output wire Ld,        //DOUT9
+    output wire Si,        //DOUT10
+    input  wire So,        //DIN0
 // Chip RO
-    output wire Freeze,    //DOUT
-    output wire Read,      //DOUT
-    input wire TokOut,     //DOUT
-    input wire DataOut,    //DOUT
-    input wire LVDS_Out,   //DIN8_LVDS0
+    output wire Freeze,    //DOUT3
+    output wire Read,      //DOUT4
+    input wire TokOut,     //DIN4
+    input wire DataOut,    //DIN6
+    input wire LVDS_Out,   //LVDSIN0
 // Chip Injection & Monitor
-    output wire Injection, //DOUT
-    input wire HitOr,     //DIN
+    output wire Injection, //DOUT6
+    input wire HitOr,     //DIN2
     // I2C
     inout wire SDA,
     inout wire SCL,
@@ -513,27 +512,28 @@ monopix2_core i_monopix2_core(
     .TLU_RESET(TLU_RESET),
     .TLU_TRIGGER(TLU_TRIGGER),
 // chip Clock & reset
-    .ClkBX(ClkBX),           //DIN4
-    .ClkOut(ClkOut),         //DOUT11
-    .ClkSR(ClkSR),           //DOUT15
-    .ResetBcid(ResetBcid),   //DOUT10
-    .nRst(nRst),             //DOUT12
+    .ResetBcid(ResetBcid),   //DOUT0
+    .nRst(nRst),             //DOUT1
+    .ClkOut(ClkOut),         //DOUT2
+    .ClkBX(ClkBX),           //DOUT5
+    .ClkSR(ClkSR),           //DOUT11
 // Chip Configuration
-    .SR_EN(SR_EN),           //DOUT13
-    .Si(Si),                 //DOUT14
-    .Def_Cnfg(Def_Cnfg),
-    .Ld(Ld),         //DIN1
-    .En_Cnfg_Pix(En_Cnfg_Pix),
-    .So(So),
+    .En_Cnfg_Pix(En_Cnfg_Pix),  //DOUT7
+    .Def_Cnfg(Def_Cnfg),     //DOUT8
+    .Ld(Ld),                 //DOUT9
+    .Si(Si),                 //DOUT10
+    .So(So),                 //DIN0
 // Chip RO
-    .Freeze(Freeze),       //DOUT1
-    .Read(Read),           //DOUT2
-    .TokOut(TokOut),       //DOUT3
-    .DataOut(DataOut),     //DOUT4
-    .LVDS_Out(LVDS_Out),   //DOUT5
+    .Freeze(Freeze),       //DOUT3
+    .Read(Read),           //DOUT4
     .Injection(Injection), //DOUT6
-    .HitOr(HitOr),         //DOUT7
+    .HitOr(HitOr),         //DIN2
+    .TokOut(TokOut),       //DIN4
+    .DataOut(DataOut),     //DIN6
+    .LVDS_Out(LVDS_Out),   //LVDSIN0
     .DEBUG(DEBUG)
 );
 
+ila_0 ila (.clk(CLK40), .probe0({7'b0, Read}));
+ 
 endmodule

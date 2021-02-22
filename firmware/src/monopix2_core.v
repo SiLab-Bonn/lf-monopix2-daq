@@ -39,20 +39,18 @@ module monopix2_core (
     input wire TLU_RESET,   //RJ45
     input wire TLU_TRIGGER, //RJ45
 
-// chip Clock & reset
-   output wire ClkBX,              //input logic
-   output wire ClkOut,            //input logic
-   output wire ClkSR,              //input logic 
-//
+// Chip Reset & Clock
    output wire ResetBcid,      //input logic 
    output wire nRst,           //input logic
+   output wire ClkOut,            //input logic
+   output wire ClkBX,              //input logic
+   output wire ClkSR,              //input logic 
 
 // Chip Configuration
-   output wire SR_EN,           //input logic 
-   output wire Si,              //input logic 
+   output wire En_Cnfg_Pix,         //input logic 
    output wire Def_Cnfg,        //input logic 
    output wire Ld,          //input logic 
-   output wire En_Cnfg_Pix,         //input logic 
+   output wire Si,              //input logic 
    input wire So,               //output logic 
 
 // Chip RO

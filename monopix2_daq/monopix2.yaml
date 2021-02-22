@@ -4,84 +4,52 @@ name    : monopix_daq
 version : 0.0.1
 
 transfer_layer:
-    - name  : intf
-      type  : monopix2_daq.sim.SiSim
-      init : 
-        timeout  : 600
-        bit_file : ../firmware/bit/monopix_mio.bit
-        avoid_download : True
-#  - name  : intf
-#    type  : SiTcp
-#    init:
-#        ip : "192.168.10.17"
-#        udp_port : 4660
-#        tcp_port : 24
-#        tcp_connection : True
+#    - name  : intf
+#      type  : monopix2_daq.sim.SiSim
+#      init : 
+#        timeout  : 600
+#        bit_file : ../firmware/bit/monopix_mio.bit
+#        avoid_download : True
+  - name  : intf
+    type  : SiTcp
+    init:
+        ip : "192.168.10.16"
+        udp_port : 4660
+        tcp_port : 24
+        tcp_connection : True
 
 hw_drivers:
-#  - name      : i2c
-#    type      : i2c
-#    interface : intf
-#    base_addr : 0x2000#
-
-#  - name      : GPAC
-#    type      : GPAC
-#    hw_driver : i2c
-#    base_addr : 0x00000
-#    init:
-#        no_calibration : False
-#        no_power_reset : True
-
-  - name      : tb
-    type      : monopix2_daq.testbench
+  - name      : i2c
+    type      : i2c
     interface : intf
-    base_addr : 0x12000
+    base_addr : 0x2000
+
+  - name      : GPAC
+    type      : GPAC
+    hw_driver : i2c
+    base_addr : 0x00000
+    init:
+        no_calibration : False
+        no_power_reset : True
+
+  # - name      : tb
+  #   type      : monopix2_daq.testbench
+  #   interface : intf
+  #   base_addr : 0x12000
 
   - name      : fifo
-    type      : sram_fifo
+    type      : sitcp_fifo
     interface : intf
-    base_addr : 0x18000              # MIO
-    base_data_addr: 0x1000000000000  # MIO
-#    base_addr : 0x200000000           # MIO3
-#    base_data_addr : 0x100000000      # MIO3
+#    base_addr : 0x18000              # MIO
+#    base_data_addr: 0x1000000000000  # MIO
+    base_addr : 0x200000000           # MIO3
+    base_data_addr : 0x100000000      # MIO3
 
   - name      : gpio
     type      : gpio
     interface : intf
     base_addr : 0x10010
     size      : 16
-
-  - name      : spi
-    type      : spi
-    interface : intf
-    base_addr : 0x15000
-
-  - name      : tlu
-    type      : monopix2_daq.tlu_slave
-    interface : intf
-    base_addr : 0x10600
-    size      : 8
-
-  - name      : spi_dc
-    type      : spi
-    interface : intf
-    base_addr : 0x10b00
-
-  - name      : data_rx       # 0
-    type      : monopix2_daq.mono_data_rx
-    interface : intf
-    base_addr : 0x10500
-
-  - name      : timestamp_inj  #5
-    type      : monopix2_daq.timestamp640
-    interface : intf
-    base_addr : 0x10900
-    size      : 8
-
-  - name      : timestamp_mon  #6
-    type      : monopix2_daq.timestamp640
-    interface : intf
-    base_addr : 0x10a00
 
   - name      : inj
     type      : pulse_gen
@@ -93,20 +61,58 @@ hw_drivers:
     interface : intf
     base_addr : 0x10400
 
+  - name      : data_rx       
+    type      : monopix2_daq.mono_data_rx
+    interface : intf
+    base_addr : 0x10500
+
+  - name      : tlu
+    type      : monopix2_daq.tlu_slave
+    interface : intf
+    base_addr : 0x10600
+    size      : 8
+
+  - name      : timestamp_tlu
+    type      : monopix2_daq.timestamp640
+    interface : intf
+    base_addr : 0x10800
+
+  - name      : timestamp_inj
+    type      : monopix2_daq.timestamp640
+    interface : intf
+    base_addr : 0x10900
+    size      : 8
+
+  - name      : timestamp_mon
+    type      : monopix2_daq.timestamp640
+    interface : intf
+    base_addr : 0x10a00
+
+  - name      : spi
+    type      : spi
+    interface : intf
+    base_addr : 0x15000
+
+  - name      : spi_dc
+    type      : spi
+    interface : intf
+    base_addr : 0x10b00
+
+  - name        : NTC
+    type        : NTCRegister
+    NTC_type    : TDK_NTCG16H
+    hw_driver   : GPAC
+    arg_names   : [ value ]
+    arg_add     : { 'channel': 'ISRC0'}
+
 registers:
-#  - name        : NTC
-#    type        : NTCRegister
-#    NTC_type   : TDK_NTCG16H
-#    hw_driver   : GPAC
-#    arg_names   : [ value ]
-#    arg_add     : { 'channel': 'ISRC0'}
 
   - name        : CONF
     type        : StdRegister
     hw_driver   : gpio
     size        : 16
     init        :
-        SLOW_RX : 0
+        SLOW_RX : 1     # 1=40MHz, 0=160MHz
     fields :
       - name    : READ_PATTERN
         size    : 1
@@ -141,79 +147,90 @@ registers:
       - name    : Rst
         size    : 1
         offset  : 0
+    
+  - name        : VPC
+    type        : FunctionalRegister
+    hw_driver   : GPAC
+    arg_names   : [value]
+    arg_add     : {'channel': 'PWR0'}
 
-#  - name        : VDDD
-#    type        : FunctionalRegister
-#    hw_driver   : GPAC
-#    arg_names   : [value]
-#    arg_add     : {'channel': 'PWR0'}
+  - name        : VDD_EOC
+    type        : FunctionalRegister
+    hw_driver   : GPAC
+    arg_names   : [value]
+    arg_add     : {'channel': 'PWR1'}
 
-#  - name        : VDDA
+#  - name        : VDD_IO
 #    type        : FunctionalRegister
 #    hw_driver   : GPAC
 #    arg_names   : [value]
 #    arg_add     : {'channel': 'PWR1'}
-#    init        : 
-#        value : 1.8
 
-#  - name        : VDD_BCID_BUFF
-#    type        : FunctionalRegister
-#    hw_driver   : GPAC
-#    arg_names   : [value]
-#    arg_add     : {'channel': 'PWR2'}
-    
-#  - name        : VPC
-#    type        : FunctionalRegister
-#    hw_driver   : GPAC
-#    arg_names   : [value]
-#    arg_add     : {'channel': 'PWR3'}
+  - name        : VDDD
+    type        : FunctionalRegister
+    hw_driver   : GPAC
+    arg_names   : [value]
+    arg_add     : {'channel': 'PWR2'}
+
+  - name        : VDDA
+    type        : FunctionalRegister
+    hw_driver   : GPAC
+    arg_names   : [value]
+    arg_add     : {'channel': 'PWR3'}
+    init        : 
+        value : 1.8
    
-#  - name        : BL
-#    type        : FunctionalRegister
-#    hw_driver   : GPAC
-#    arg_names   : [ value ]
-#    arg_add     : { 'channel': 'VSRC0'}
+  - name        : BL
+    type        : FunctionalRegister
+    hw_driver   : GPAC
+    arg_names   : [ value ]
+    arg_add     : { 'channel': 'VSRC0'}
     
-#  - name        : TH
-#    type        : FunctionalRegister
-#    hw_driver   : GPAC
-#    arg_names   : [ value ]
-#    arg_add     : { 'channel': 'VSRC1'}
+  - name        : TH1
+    type        : FunctionalRegister
+    hw_driver   : GPAC
+    arg_names   : [ value ]
+    arg_add     : { 'channel': 'VSRC1'}
     
-#  - name        : VCascC 
-#    type        : FunctionalRegister
-#    hw_driver   : GPAC
-#    arg_names   : [ value ]
-#    arg_add     : { 'channel': 'VSRC2'}
+  - name        : TH2 
+    type        : FunctionalRegister
+    hw_driver   : GPAC
+    arg_names   : [ value ]
+    arg_add     : { 'channel': 'VSRC2'}
     
-#  - name        : VCascN
-#    type        : FunctionalRegister
-#    hw_driver   : GPAC
-#    arg_names   : [ value ]
-#    arg_add     : { 'channel': 'VSRC3'}
+  - name        : TH3
+    type        : FunctionalRegister
+    hw_driver   : GPAC
+    arg_names   : [ value ]
+    arg_add     : { 'channel': 'VSRC3'}
 
-#  - name        : PBias
-#    type        : FunctionalRegister
-#    hw_driver   : GPAC
-#    arg_names   : [ value ]
-#    arg_add     : { 'channel': 'ISRC10'}
+  - name        : Idac_TDAC_LSB
+    type        : FunctionalRegister
+    hw_driver   : GPAC
+    arg_names   : [ value ]
+    arg_add     : { 'channel': 'ISRC2'}
 
-#  - name        : INJ_LO
-#    type        : FunctionalRegister
-#    hw_driver   : GPAC
-#    arg_names   : [ value ]
-#    arg_add     : { 'channel': 'INJ1'}
-#    init        :
-#        'DAC': {'offset': 0.0, 'gain': 0.49}
+  - name        : Iref
+    type        : FunctionalRegister
+    hw_driver   : GPAC
+    arg_names   : [ value ]
+    arg_add     : { 'channel': 'ISRC4'}
+
+  - name        : INJ_LO
+    type        : FunctionalRegister
+    hw_driver   : GPAC
+    arg_names   : [ value ]
+    arg_add     : { 'channel': 'INJ1'}
+    init        :
+        'DAC': {'offset': 0.0, 'gain': 0.49}
  
-
-#  - name        : INJ_HI
-#    type        : FunctionalRegister
-#    hw_driver   : GPAC
-#    arg_names   : [ value ]
-#    arg_add     : { 'channel': 'INJ0'}
-#    init        :
-#        'DAC': {'offset': 0.0, 'gain': 0.49}
+  - name        : INJ_HI
+    type        : FunctionalRegister
+    hw_driver   : GPAC
+    arg_names   : [ value ]
+    arg_add     : { 'channel': 'INJ0'}
+    init        :
+        'DAC': {'offset': 0.0, 'gain': 0.49}
 
   - name        : CONF_SR
     type        : StdRegister
@@ -223,22 +240,22 @@ registers:
     init        :
         BLRes     : 32
         VAmp1     : 35
-        VAmp2     : 30
-        VPFB      : 29
-        VNFoll    : 28
-        VPFoll    : 26
+        VAmp2     : 35
+        VPFB      : 30
+        VNFoll    : 15
+        VPFoll    : 15
         VNLoad    : 25
-        VPLoad    : 24
-        TDAC_LSB  : 23
-        Vsf       : 22
-        Driver    : 21
-        Mon_Vsf   : 1
+        VPLoad    : 7
+        TDAC_LSB  : 12
+        Vsf       : 32
+        Driver    : 32
+        Mon_Vsf   : 0
         Mon_VPFB  : 0
         Mon_VPLoad : 0
         Mon_VNLoad : 0
         Mon_VNFoll     : 0
         Mon_VPFoll     : 0
-        Mon_VAmp1 : 0
+        Mon_VAmp1 : 1
         Mon_VAmp2 : 0
         Mon_TDAC_LSB   : 0
         Mon_BLRes : 0
@@ -246,17 +263,17 @@ registers:
         EnDataCMOS    : 1
         EnDataLVDS    : 0
         EnAnaBuffer: 1
-        EnTestPattern : 0
+        EnTestPattern : 1
         DelayROConf   : 4
         EnColRO   : 0xFFFFFFFFFFFFFF
-        InjEnCol  : 0xFFFFFFFFEFFFFF
-        EnMonitorCol: 0x00000000E00000
-        TrimLd    : 15
-        EnInjLd   : 1
-        EnMonitorLd   : 1
-        EnPreLd   : 1
-        EnSRDCol  : 0x0
-        EnSoDCol  : 2
+        InjEnCol  : 0xFFFFFFFFEFFFFF  #0:Active
+        EnMonitorCol: 0x00000000E00000  
+        TrimLd    : 15  #0:Active
+        EnInjLd   : 0
+        EnMonitorLd   : 0
+        EnPreLd   : 0 #0:Active
+        EnSRDCol  : 0x0 
+        EnSoDCol  : 0
     fields:
         - name     : Driver
           size     : 6
