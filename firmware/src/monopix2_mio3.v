@@ -1,6 +1,8 @@
 `timescale 1ns / 1ps
 `default_nettype none
 
+`define CODE_FOR_MIO3
+
 `include "monopix2_core.v"
 `include "clk_gen.v"
 
@@ -50,8 +52,6 @@
 `include "WRAP_SiTCP_GMII_XC7K_32K.V"
 `include "SiTCP_XC7K_32K_BBT_V110.V"
 `include "TIMER.v"
-
-`define CODE_FOR_MIO3
 
 module monopix2_mio3(
 // FPGA clk
@@ -504,7 +504,7 @@ monopix2_core i_monopix2_core(
     .FIFO_NEAR_FULL(FIFO_NEAR_FULL),
 //LED, LEMO, RJ45, Flatcable
     .LED(LED[4:0]),
-    .LEMO_RX({LEMO_RX2,LEMO_RX}),
+    .LEMO_RX(LEMO_RX),
     .InjLoopIn(InjLoopIn), //Flatcable6
     .TLU_CLK(TLU_CLK),
     .TLU_BUSY(TLU_BUSY),
@@ -534,6 +534,7 @@ monopix2_core i_monopix2_core(
     .DEBUG(DEBUG)
 );
 
-ila_0 ila (.clk(CLK40), .probe0({7'b0, Read}));
+// "ila" commands to debug read-out at an FPGA level. Not setup for the script-based firmware compilation, as it requires extra work on Vivado.
+// ila_0 ila (.clk(CLK40), .probe0({1'b0,i_monopix2_core.mono_data_rx.mono_data_rx_core.CONF_FORCE_READ, i_monopix2_core.mono_data_rx.mono_data_rx_core.state[3:0], i_monopix2_core.mono_data_rx.mono_data_rx_core.RX_READ, i_monopix2_core.mono_data_rx.mono_data_rx_core.RX_FREEZE, i_monopix2_core.mono_data_rx.mono_data_rx_core.RX_TOKEN}));
  
 endmodule

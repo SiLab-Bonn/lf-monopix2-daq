@@ -1,0 +1,36 @@
+name: lfmonopix2
+dependencies:
+  - python=3.6
+  - numpy
+  - pyyaml
+  - bitarray
+  - six
+  - cython
+  - scipy
+  - numba
+  - matplotlib
+  - future
+  - numexpr
+  - dill
+  - numpydoc
+  - tqdm
+  - mock
+  - nose
+  - pyqtgraph
+  - pyserial
+  - pyzmq
+  - contextlib2
+  - psutil
+  - testfixtures
+  - qtpy
+  - zeromq
+  - pyqtgraph
+  - pyqt
+  - jupyter
+  - pip
+  - notebook
+  - pip:
+    - tables
+    - progressbar-latest
+    - pyvisa-py
+    - pyvisa

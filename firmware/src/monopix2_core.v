@@ -395,7 +395,11 @@ mono_data_rx #(
     
     .LOST_ERROR()
 );
-assign RX_CLK = SW_SLOW_RX_CONF? CLK40:CLK160;
+
+//This was an initial option in software, but we got timing errors at the implementation. 40MHz by now.
+//assign RX_CLK = SW_SLOW_RX_CONF? CLK40:CLK160;
+assign RX_CLK = CLK40;
+
 assign RX_DATA= SW_LVDS_Out_CONF? LVDS_Out : DataOut;
 ODDR clk_bx_gate(.D1(EN_ClkBX_CONF), .D2(1'b0), .C(CLK40), .CE(1'b1), .R(1'b0), .S(1'b0), .Q(ClkBX) );
 //assign ClkBX= CLK40 & EN_ClkBX_CONF;
@@ -444,6 +448,32 @@ pulse_gen #(
 );
 assign Injection = ~InjLoopOut;
 `endif
+
+timestamp640
+#(
+    .BASEADDR(TS_BASEADDR),
+    .HIGHADDR(TS_HIGHADDR),
+    .IDENTIFIER(4'b0100)
+)i_timestamp(
+    .BUS_CLK(BUS_CLK),
+    .BUS_ADD(BUS_ADD),
+    .BUS_DATA(BUS_DATA),
+    .BUS_RST(BUS_RST),
+    .BUS_WR(BUS_WR),
+    .BUS_RD(BUS_RD),
+      
+    .CLK320(CLK320),
+    .CLK160(CLK160),
+    .CLK40(CLK40),
+    .DI(LEMO_RX[1]),
+    .TIMESTAMP_OUT(),
+    .EXT_TIMESTAMP(TIMESTAMP),
+    .EXT_ENABLE(1'b1),
+
+    .FIFO_READ(TS_FIFO_READ),
+    .FIFO_EMPTY(TS_FIFO_EMPTY),
+    .FIFO_DATA(TS_FIFO_DATA)
+);
 
 timestamp640
 #(
