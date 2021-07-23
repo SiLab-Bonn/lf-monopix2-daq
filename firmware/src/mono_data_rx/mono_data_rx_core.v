@@ -45,7 +45,8 @@ module mono_data_rx_core
     input wire BUS_WR,
     input wire BUS_RD,
 
-    output wire LOST_ERROR
+    input wire MUTE_INJHIGH,         // MUTEATTEMPT
+    output wire LOST_ERROR        
 );
 
 localparam VERSION = 3;
@@ -112,7 +113,8 @@ always @(posedge BUS_CLK) begin
 end
 
 reg [7:0] LOST_DATA_CNT;
-reg[48:0] token_timestamp;
+// reg[48:0] token_timestamp;       
+reg[47:0] token_timestamp;      // MUTEATTEMPT
 reg[24:0] token_cnt;
 always @(posedge BUS_CLK) begin
     if(BUS_RD) begin
@@ -184,11 +186,13 @@ reg TOKEN_NEXT;  //TODO delete?
 
 always@(posedge RX_CLK)
     if (RST_SYNC) begin
-	     token_timestamp <= 49'b0;
+	     //token_timestamp <= 49'b0;
+         token_timestamp <= 48'b0;      // MUTEATTEMPT
 	     token_cnt <= 25'b0;
 	 end
 	 else if ( TOKEN_SYNC ) begin
-	     token_timestamp <= TIMESTAMP[48:0];
+	     //token_timestamp <= TIMESTAMP[48:0];
+         token_timestamp <= TIMESTAMP[47:0];    // MUTEATTEMPT
 	     token_cnt <= token_cnt+1;
 	 end
 
@@ -313,7 +317,7 @@ always@(posedge RX_CLK) begin
     else 
         data_out_strobe <= 0; 
 end
-//
+
 wire cdc_fifo_write;
 assign cdc_fifo_write = data_out_strobe;
 
@@ -328,6 +332,9 @@ end
 wire posssible_noise;
 assign posssible_noise = (state == WAIT_NEXT || state == WAIT_TWO_NEXT);
 
+wire mute_injhigh_flag;                            // MUTEATTEMPT
+assign mute_injhigh_flag = MUTE_INJHIGH;           // MUTEATTEMPT
+
 wire [5:0] col;
 wire [8:0] row;
 wire [5:0] te_gray, le_gray, te, le;
@@ -336,7 +343,9 @@ assign {col, le_gray, te_gray, row} = data_out;
 bin_to_gray6 bin_to_gray_te(.gray_input(te_gray), .bin_out(te) );
 bin_to_gray6 bin_to_gray_le(.gray_input(le_gray), .bin_out(le) );
 
-assign data_to_cdc = CONF_DISSABLE_GRAY_DEC ? {token_cnt,token_timestamp,posssible_noise, data_out} : {token_cnt,token_timestamp,posssible_noise, col, le, te, row};
+//assign data_to_cdc = CONF_DISSABLE_GRAY_DEC ? {token_cnt,token_timestamp,posssible_noise, data_out} : {token_cnt,token_timestamp,posssible_noise, col, le, te, row};
+assign data_to_cdc = CONF_DISSABLE_GRAY_DEC ? {token_cnt, token_timestamp, mute_injhigh_flag, posssible_noise, data_out} : {token_cnt, token_timestamp, mute_injhigh_flag, posssible_noise, col, le, te, row};
+// MUTEATTEMPT
 
 wire [101:0] cdc_data_out; 
 wire cdc_fifo_empty, fifo_full, fifo_write;

@@ -233,7 +233,7 @@ end
 
 genvar i;
 generate
-for (i=0; i<2; i=i+1) begin
+for (i=0; i<OUTPUT_SIZE; i=i+1) begin
     OSERDESE2 # (
         .DATA_RATE_OQ("DDR"),
         .DATA_WIDTH(4),

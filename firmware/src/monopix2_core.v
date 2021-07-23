@@ -64,6 +64,7 @@ module monopix2_core (
    output wire Injection,     //input logic
    input wire HitOr,          //output logic
 
+   output wire DEBUG_MUTINJRISE,
    output wire DEBUG
 );
 
@@ -72,6 +73,9 @@ module monopix2_core (
 
 localparam GPIO_BASEADDR = 16'h0010;
 localparam GPIO_HIGHADDR = 16'h0100-1;
+
+localparam PULSE_MUTEINJRISE_BASEADDR = 16'h0200;
+localparam PULSE_MUTEINJRISE_HIGHADDR = 16'h0300-1;
 
 localparam PULSE_INJ_BASEADDR = 16'h0300;
 localparam PULSE_INJ_HIGHADDR = 16'h0400-1;
@@ -286,7 +290,17 @@ timestamp640 #(
 wire CONF_CLK;
 wire SCLK, SDI, SDO, SEN, SLD;
 wire SCLK_Cnfg, SDI_Cnfg, SEN_Cnfg, SLD_Cnfg;
-assign CONF_CLK = CLK8;
+
+// CLK_SR has to be smaller than 8 MHz for proper pixel configuration ---> CLK8/8 = 1MHz
+clock_divider 
+#(
+    .DIVISOR(8)
+) i_clock_divisor_conf (
+    .CLK(CLK8),
+    .RESET(1'b0),
+    .CLOCK(CONF_CLK)
+);
+
 spi 
 #( 
     .BASEADDR(SPI_BASEADDR), 
@@ -393,6 +407,7 @@ mono_data_rx #(
     .FIFO_EMPTY(RX_FIFO_EMPTY),
     .FIFO_DATA(RX_FIFO_DATA),
     
+    .MUTE_INJHIGH(DEBUG),      // MUTEATTEMPT
     .LOST_ERROR()
 );
 
@@ -425,13 +440,14 @@ pulse_gen640
 
     .PULSE_CLK320(CLK320),
     .PULSE_CLK160(CLK160),
-    .PULSE_CLK(~CLK40),
+    .PULSE_CLK(CLK40),
     .EXT_START(GATE),
     .PULSE({InjLoopOut,Injection}),
     .DEBUG(DEBUG)
 );
 `else
-pulse_gen #( 
+pulse_gen 
+#( 
     .BASEADDR(PULSE_INJ_BASEADDR), 
     .HIGHADDR(PULSE_INJ_HIGHADDR)
 )     pulse_gen_inj(
@@ -442,12 +458,33 @@ pulse_gen #(
     .BUS_RD(BUS_RD),
     .BUS_WR(BUS_WR),
 
-    .PULSE_CLK(~CLK40),
+    .PULSE_CLK(CLK40),
     .EXT_START(GATE),
     .PULSE(InjLoopOut)
 );
 assign Injection = ~InjLoopOut;
 `endif
+
+wire Inj_Rise;
+assign Inj_Rise = Injection;
+//assign DEBUG_MUTINJRISE = 1'b1;
+/**
+pulse_gen #( 
+    .BASEADDR(PULSE_MUTEINJRISE_BASEADDR), 
+    .HIGHADDR(PULSE_MUTEINJRISE_HIGHADDR)
+)     pulse_mute_injrise(
+    .BUS_CLK(BUS_CLK),
+    .BUS_RST(BUS_RST),
+    .BUS_ADD(BUS_ADD),
+    .BUS_DATA(BUS_DATA[7:0]),
+    .BUS_RD(BUS_RD),
+    .BUS_WR(BUS_WR),
+
+    .PULSE_CLK(CLK40),
+    .EXT_START(Inj_Rise),
+    .PULSE(DEBUG_MUTINJRISE)
+);
+**/
 
 timestamp640
 #(
@@ -544,7 +581,26 @@ always@(negedge CLK40) begin
     else if (TIMESTAMP[5:0]==6'h30)
         ResetBcid_reg <= ResetBcid_CONF;
 end
+
+reg MuteInjRise_reg;
+assign DEBUG_MUTINJRISE = MuteInjRise_reg;
+reg [8:0] mutinj_cnt = 9'b000000000;
+always@ (posedge CLK40) begin
+    if (DEBUG & (mutinj_cnt< 9'd320)) begin
+        MuteInjRise_reg <= 1'b0;
+        mutinj_cnt <= mutinj_cnt + 1'b1;
+    end
+    else if (DEBUG & (mutinj_cnt == 9'd320)) begin
+        MuteInjRise_reg <= 1'b1;
+    end
+    else begin
+        MuteInjRise_reg <= 1'b1;
+        mutinj_cnt <= 9'b000000000;
+    end
+end
+
 reg nRst_reg;
+//assign nRst = (nRst_reg & MuteInjRise_reg);
 assign nRst = nRst_reg;
 always@(negedge CLK40)
     nRst_reg <= ~Rst_CONF;

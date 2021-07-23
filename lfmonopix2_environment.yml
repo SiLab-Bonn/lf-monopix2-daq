@@ -29,6 +29,7 @@ dependencies:
   - jupyter
   - pip
   - notebook
+  - math
   - pip:
     - tables
     - progressbar-latest

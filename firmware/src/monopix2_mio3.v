@@ -62,7 +62,7 @@ module monopix2_mio3(
     input wire InjLoopIn,       //RX2 or flatcable 6
     output wire TLU_CLK,        //TX0 and RJ45
     output wire TLU_BUSY,       //TX1 and RJ45
-    output wire InjLoopOut, //TX2 or flatcable 5
+    output wire InjLoopOut,     //TX2 or flatcable 5
     input wire TLU_RESET,       //RJ45
     input wire TLU_TRIGGER,     //RJ45
 // Chip Reset & Clock
@@ -86,7 +86,10 @@ module monopix2_mio3(
 // Chip Injection & Monitor
     output wire Injection, //DOUT6
     input wire HitOr,     //DIN2
-    // I2C
+// DEBUG
+    output wire DEBUG_MUTINJRISE,  //DOUT14
+    output wire DEBUG,  //DOUT15
+// I2C
     inout wire SDA,
     inout wire SCL,
 // declarations below are for MIO3 only    
@@ -461,8 +464,8 @@ module monopix2_mio3(
     );
     assign ARB_READY_OUT = !FIFO_FULL;
     
-    wire FIFO_EMPTY, FIFO_FULL;
-    fifo_32_to_8 #(.DEPTH(256*1024)) i_data_fifo (
+    wire FIFO_EMPTY;
+    fifo_32_to_8 #(.DEPTH(32*1024)) i_data_fifo (
         .RST(BUS_RST),
         .CLK(BUS_CLK),
         
@@ -531,6 +534,7 @@ monopix2_core i_monopix2_core(
     .TokOut(TokOut),       //DIN4
     .DataOut(DataOut),     //DIN6
     .LVDS_Out(LVDS_Out),   //LVDSIN0
+    .DEBUG_MUTINJRISE(DEBUG_MUTINJRISE),
     .DEBUG(DEBUG)
 );
 

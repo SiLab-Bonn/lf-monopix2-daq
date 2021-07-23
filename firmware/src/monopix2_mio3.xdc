@@ -3,8 +3,16 @@
 # FCLK (100 MHz)
 set_property PACKAGE_PIN AA3 [get_ports FCLK_IN]
 set_property IOSTANDARD LVCMOS15 [get_ports FCLK_IN]
-create_clock -period 10.000 -name FCLK_IN -add [get_ports FCLK_IN]
 
+# Clock inputs
+create_clock -period 10.000 -name FCLK_IN -add [get_ports FCLK_IN]
+create_clock -period 8.000 -name rgmii_rxc -add [get_ports rgmii_rxc]
+
+# Derived Clocks
+create_generated_clock -name I2C_CLK -source [get_pins PLLE2_BASE_inst_clk/CLKOUT5] -divide_by 1500 [get_pins i_clock_divisor_spi/CLOCK_reg/Q]
+create_generated_clock -name CONF_CLK -source [get_pins PLLE2_BASE_inst_clk/CLKOUT0] -divide_by 8 [get_pins i_monopix2_core/i_clock_divisor_conf/CLOCK_reg/Q]
+
+# False paths
 set_false_path -from [get_clocks CLK40_PLL] -to [get_clocks BUS_CLK_PLL]
 set_false_path -from [get_clocks BUS_CLK_PLL] -to [get_clocks CLK40_PLL]
 
@@ -17,11 +25,17 @@ set_false_path -from [get_clocks BUS_CLK_PLL] -to [get_clocks CLK160_PLL]
 set_false_path -from [get_clocks CLK8_PLL] -to [get_clocks BUS_CLK_PLL]
 set_false_path -from [get_clocks BUS_CLK_PLL] -to [get_clocks CLK8_PLL]
 
-create_clock -period 8.000 -name rgmii_rxc -add [get_ports rgmii_rxc]
 set_false_path -from [get_clocks CLK125PLLTX] -to [get_clocks BUS_CLK_PLL]
 set_false_path -from [get_clocks BUS_CLK_PLL] -to [get_clocks CLK125PLLTX]
 set_false_path -from [get_clocks BUS_CLK_PLL] -to [get_clocks rgmii_rxc]
 set_false_path -from [get_clocks rgmii_rxc] -to [get_clocks BUS_CLK_PLL]
+
+set_false_path -from [get_clocks CONF_CLK] -to [get_clocks BUS_CLK_PLL]
+set_false_path -from [get_clocks BUS_CLK_PLL] -to [get_clocks CONF_CLK]
+
+set_false_path -from [get_clocks I2C_CLK] -to [get_clocks BUS_CLK_PLL]
+set_false_path -from [get_clocks BUS_CLK_PLL] -to [get_clocks I2C_CLK]
+
 
 # ------ LED
 set_property PACKAGE_PIN M17 [get_ports {LED[0]}]
@@ -239,13 +253,19 @@ set_property IOSTANDARD LVCMOS33 [get_ports InjLoopOut]
 set_property SLEW FAST [get_ports InjLoopOut]
 set_property DRIVE 16 [get_ports InjLoopOut]
 
-set_property PACKAGE_PIN AD21 [get_ports DEBUG]
+set_property PACKAGE_PIN F12 [get_ports InjLoopIn]
+set_property IOSTANDARD LVCMOS33 [get_ports InjLoopIn]
+
+# Connected to DOUT[15]
+set_property PACKAGE_PIN F15 [get_ports DEBUG]
 set_property IOSTANDARD LVCMOS33 [get_ports DEBUG]
 set_property SLEW FAST [get_ports DEBUG]
 set_property DRIVE 16 [get_ports DEBUG]
 
-set_property PACKAGE_PIN F12 [get_ports InjLoopIn]
-set_property IOSTANDARD LVCMOS33 [get_ports InjLoopIn]
+# Connected to DOUT[14]
+set_property PACKAGE_PIN G15 [get_ports DEBUG_MUTINJRISE]
+set_property IOSTANDARD LVCMOS33 [get_ports DEBUG_MUTINJRISE]
+
 
 
 

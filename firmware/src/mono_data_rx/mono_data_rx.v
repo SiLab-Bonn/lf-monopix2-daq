@@ -33,8 +33,8 @@ module mono_data_rx
     output wire FIFO_EMPTY,
     output wire [31:0] FIFO_DATA,
     
+    input wire MUTE_INJHIGH,        // MUTEATTEMPT
     output wire LOST_ERROR
-    
 ); 
 
 wire IP_RD, IP_WR;
@@ -82,6 +82,7 @@ mono_data_rx_core
     .FIFO_EMPTY(FIFO_EMPTY),
     .FIFO_DATA(FIFO_DATA),
     
+    .MUTE_INJHIGH(MUTE_INJHIGH),        // MUTEATTEMPT
     .LOST_ERROR(LOST_ERROR)
 );
 

@@ -23,7 +23,9 @@ def mk_fname(ext="data.npy",dirname=None):
     return os.path.join(dirname, time.strftime("%Y%m%d_%H%M%S0_")+ext)
 
 class Monopix2(Dut):
-
+    """
+    A class that represents a LF-Monopix2 DMAPS with a GPAC and MIO based DAQ.
+    """
     # Default path for Monopix2 yaml file
     default_yaml = os.path.dirname(os.path.abspath(__file__)) + os.sep + "monopix2.yaml"
 
@@ -42,23 +44,38 @@ class Monopix2(Dut):
 
         # Initialize logger.
         self.logger = logging.getLogger()
-        logFormatter = logging.Formatter("%(asctime)s [%(levelname)-5.5s] (%(threadName)-10s) %(message)s")
+        logFormatter = logging.Formatter("%(asctime)s [%(levelname)-5.5s] [%(threadName)-10s] [%(filename)-15s] [%(funcName)-15s] %(message)s")
         fname = mk_fname(ext="log.log")
         fileHandler = logging.FileHandler(fname)
         fileHandler.setFormatter(logFormatter) 
         self.logger.addHandler(fileHandler)
+        for l in self.logger.handlers:
+            if isinstance(l, logging.StreamHandler):
+                l.setFormatter(logFormatter)
         self.logger.info("LF-Monopix2 initialized at "+time.strftime("%Y-%m-%d_%H:%M:%S"))
 
-        # Define chip dimensions.
-        self.COL_SIZE = 56 
-        self.ROW_SIZE = 340
+        # Define chip dimensions and areas with different settings.
+        self.chip_props={"COL_SIZE": 56,
+                        "ROW_SIZE": 340,
+                        "ROW_SIZE_NW_N": list(range(0,170)),
+                        "ROW_SIZE_NW_Y": list(range(170,340)),
+                        "COLS_TUNING_BI": list(range(0,16))+list(range(48,56)),
+                        "COLS_TUNING_UNI": list(range(16,48)),
+                        "COLS_M11": list(range(52,56)),
+                        "COLS_M12": list(range(48,52)), 
+                        "COLS_M13": list(range(40,48)), 
+                        "COLS_M14": list(range(16,40)), 
+                        "COLS_M1": list(range(16,56)),
+                        "COLS_M2": list(range(8,16)),
+                        "COLS_M3": list(range(0,8))
+                        }
 
         # Load configuration from yaml file and initialize taking into account the power reset instructions.
         if conf is None:
             conf = self.default_yaml
         if isinstance(conf, str):
             with open(conf) as f:
-                conf = yaml.load(f, Loader=yaml.SafeLoader)
+                conf = yaml.full_load(f)
             for i, e in enumerate(conf["hw_drivers"]):
                 if e["type"]=="GPAC":
                     conf["hw_drivers"][i]["init"]["no_power_reset"] = no_power_reset
@@ -75,13 +92,13 @@ class Monopix2(Dut):
             self.REG_CONF[field['name']]=self["CONF_SR"][field['name']]
 
         # Initialize relevant dictionaries for masks of pixel bit arrays.
-        # self.PIXEL_CONF = {'EnPre': np.full([self.COL_SIZE,self.ROW_SIZE], False, dtype = np.bool),
-        #                'EnInj'   : np.full([self.COL_SIZE,self.ROW_SIZE], False, dtype = np.bool),
-        #                'EnMonitor'   : np.full([self.COL_SIZE,self.ROW_SIZE], False, dtype = np.bool),
-        self.PIXEL_CONF = {'EnPre': np.full([self.COL_SIZE,self.ROW_SIZE], 0, dtype = np.uint8),
-                       'EnInj'   : np.full([self.COL_SIZE,self.ROW_SIZE], 0, dtype = np.uint8),
-                       'EnMonitor'   : np.full([self.COL_SIZE,self.ROW_SIZE], 0, dtype = np.uint8),
-                       'Trim'  : np.full([self.COL_SIZE,self.ROW_SIZE], 0, dtype = np.uint8),
+        # self.PIXEL_CONF = {'EnPre': np.full([self.chip_props["COL_SIZE"],self.chip_props["ROW_SIZE"]], False, dtype = np.bool),
+        #                'EnInj'   : np.full([self.chip_props["COL_SIZE"],self.chip_props["ROW_SIZE"]], False, dtype = np.bool),
+        #                'EnMonitor'   : np.full([self.chip_props["COL_SIZE"],self.chip_props["ROW_SIZE"]], False, dtype = np.bool),
+        self.PIXEL_CONF = {'EnPre': np.full([self.chip_props["COL_SIZE"],self.chip_props["ROW_SIZE"]], 0, dtype = np.uint8),
+                       'EnInj'   : np.full([self.chip_props["COL_SIZE"],self.chip_props["ROW_SIZE"]], 0, dtype = np.uint8),
+                       'EnMonitor'   : np.full([self.chip_props["COL_SIZE"],self.chip_props["ROW_SIZE"]], 0, dtype = np.uint8),
+                       'Trim'  : np.full([self.chip_props["COL_SIZE"],self.chip_props["ROW_SIZE"]], 0, dtype = np.uint8),
                        }
         self.SET_VALUE = {}
 
@@ -122,6 +139,8 @@ class Monopix2(Dut):
         self['CONF']['Def_Conf'] = 0
         self['CONF'].write()
 
+        self.set_global_reg(EnTestPattern=0)
+        
     def get_fw_version(self):
         """
         Get firmware version.
@@ -367,7 +386,7 @@ class Monopix2(Dut):
                     ]:
             dac_status[dac_id] = int(str(self['CONF_SR'][dac_id]), 2)
         for dac_id in ['EnSRDCol', 'EnMonitorCol', 'InjEnCol', 'EnColRO']:
-            dac_status[dac_id] = self['CONF_SR'][dac_id]
+            dac_status[dac_id] = self['CONF_SR'][dac_id].to01()
         if log==True:
             self.logger.info("Register and DAC status: {0:s}".format(str(dac_status)))
         return dac_status
@@ -445,7 +464,7 @@ class Monopix2(Dut):
         self.logger.info("VHi set to {0:.4f} V".format(VHi))
 
     def set_inj_all(self, inj_high=0.6,
-                    inj_n=100, inj_width=3000, inj_delay=6000, 
+                    inj_n=100, inj_width=3000, inj_delay=8000, 
                     inj_phase=-1, ext_trigger=False):
         """
         Sets the global parameters for injection pulses.
@@ -549,12 +568,15 @@ class Monopix2(Dut):
                         #self._write_global_conf()
                         flag_last_mon=k
                     else:
-                        self.logger.info("The monitor you tried to set ({0}) is not in the provided monitor list.".format(reg_name))
+                        self.logger.info("The monitor you tried to set ({0}) is not in the provided monitor list.".format(k))
                         pass
                 # General change of DAC for non-monitor global registers.
                 else:
-                    self["CONF_SR"][k] = kwarg[k]
-                    s= s + " {0}={1:d}".format(k,kwarg[k])
+                    if k in ['EnSRDCol', 'EnMonitorCol', 'InjEnCol', 'EnColRO'] and isinstance(kwarg[k], str):
+                        self["CONF_SR"][k] = bitarray.bitarray(kwarg[k])
+                    else:
+                        self["CONF_SR"][k] = kwarg[k]
+                    s= s + " {0}={1}".format(k,kwarg[k])
             else:
                 s= s + " {0} is not a valid register name".format(k)
         if flag_last_mon != "":
@@ -590,11 +612,11 @@ class Monopix2(Dut):
         """
         if bit=="Trim":
             trim_bits = np.unpackbits(self.PIXEL_CONF["Trim"])
-            matrix_trim_in_bits = np.reshape(trim_bits, (self.COL_SIZE, self.ROW_SIZE, 8)).astype(np.bool)
+            matrix_trim_in_bits = np.reshape(trim_bits, (self.chip_props["COL_SIZE"], self.chip_props["ROW_SIZE"], 8)).astype(np.bool)
             pixel_conf_bitpos = matrix_trim_in_bits[:, :, 7-bit_pos]
         else:
             signal_bits = np.unpackbits(self.PIXEL_CONF[bit])
-            matrix_in_bits = np.reshape(signal_bits, (self.COL_SIZE, self.ROW_SIZE, 8)).astype(np.bool)
+            matrix_in_bits = np.reshape(signal_bits, (self.chip_props["COL_SIZE"], self.chip_props["ROW_SIZE"], 8)).astype(np.bool)
             pixel_conf_bitpos = matrix_in_bits[:, :, 7-bit_pos]
 
         # Turn Read-out related clocks off
@@ -652,15 +674,24 @@ class Monopix2(Dut):
             while not self['CONF_SR'].is_ready:
                 time.sleep(0.001)
             # Index the double column as 2 columns
+            
+            # print ("col_0", bitarray.bitarray(list(mask[dcol*2+1, :])))
+            # print ("col_0", len(bitarray.bitarray(list(mask[dcol*2+1, :]))))
+            # print ("col_1", bitarray.bitarray(list(mask[dcol*2, ::-1])))
+            # print ("col_1", len(bitarray.bitarray(list(mask[dcol*2, ::-1]))))
             self['CONF_DC']['Col0'] = bitarray.bitarray(list(mask[dcol*2+1, :]))
             self['CONF_DC']['Col1'] = bitarray.bitarray(list(mask[dcol*2, ::-1]))
+            # print(self['CONF_DC']['Col0'], len(self['CONF_DC']['Col0']))
+            # print(self['CONF_DC']['Col1'], len(self['CONF_DC']['Col1']))
             # Data going to the matrix
             self['CONF']['En_Cnfg_Pix'] = 1
             self['CONF'].write()
             self['CONF_DC'].write()
             while not self['CONF_DC'].is_ready:
                 time.sleep(0.001)
+            self['CONF_SR']['EnSRDCol'][dcol] = '0'
             self['CONF']['En_Cnfg_Pix'] = 0
+        self['CONF'].write()
 
         # Disable the in-pixel configuration
         if bit=="Trim":
@@ -683,12 +714,12 @@ class Monopix2(Dut):
         # Update Pixel Configuration.
         if bit=="Trim":
             matrix_trim_in_bits[:, :, 7-bit_pos]=mask
-            pixconf_exchanged_bit= np.reshape(np.packbits(matrix_trim_in_bits),(self.COL_SIZE, self.ROW_SIZE))
+            pixconf_exchanged_bit= np.reshape(np.packbits(matrix_trim_in_bits),(self.chip_props["COL_SIZE"], self.chip_props["ROW_SIZE"]))
             self.PIXEL_CONF[bit] = pixconf_exchanged_bit
         else:
             ###self.PIXEL_CONF[bit] = mask
             matrix_in_bits[:, :, 7-bit_pos]=mask
-            pixconf_exchanged_bit= np.reshape(np.packbits(matrix_in_bits),(self.COL_SIZE, self.ROW_SIZE))
+            pixconf_exchanged_bit= np.reshape(np.packbits(matrix_in_bits),(self.chip_props["COL_SIZE"], self.chip_props["ROW_SIZE"]))
             self.PIXEL_CONF[bit] = pixconf_exchanged_bit
 
     def _create_mask(self, pix):
@@ -704,7 +735,7 @@ class Monopix2(Dut):
                 - Matrix of the same dimensions as the chip
                 - A list of pixels: e.g. pix=[[20,60],[20,61],[20,62]]
         """        
-        mask = np.empty([self.COL_SIZE, self.ROW_SIZE])
+        mask = np.empty([self.chip_props["COL_SIZE"], self.chip_props["ROW_SIZE"]])
         mask.fill(np.NaN)
         # A string as input: "all" (all 1s) or "none" (all 0s)
         if isinstance(pix, str):
@@ -721,7 +752,7 @@ class Monopix2(Dut):
             if isinstance(pix[0], int):
                 mask[pix[0], pix[1]] = 1
             # A matrix of the same dimensions as the chip
-            elif len(pix) == self.COL_SIZE and len(pix[0]) == self.ROW_SIZE:
+            elif len(pix) == self.chip_props["COL_SIZE"] and len(pix[0]) == self.chip_props["ROW_SIZE"]:
                 mask[:, :] = np.array(pix, np.bool)
             # A list of pixels: e.g. pix=[[20,60],[20,61],[20,62]]
             else:
@@ -741,19 +772,19 @@ class Monopix2(Dut):
         mask = self._create_mask(pix)
         if EnColRO == "auto":
             self['CONF_SR']['EnColRO'].setall(False)
-            for i in range(self.COL_SIZE):
+            for i in range(self.chip_props["COL_SIZE"]):
                 self['CONF_SR']['EnColRO'][i] = bool(np.any(mask[i,:]))
         elif EnColRO == "all":
             self['CONF_SR']['EnColRO'].setall(True)
         elif EnColRO == "none":
             self['CONF_SR']['EnColRO'].setall(False)
         elif ":" in EnColRO:
-            cols = np.zeros(self.COL_SIZE, int)
+            cols = np.zeros(self.chip_props["COL_SIZE"], int)
             tmp = EnColRO.split(":")
             cols[int(tmp[0]):int(tmp[1])] = 1
-            for i in range(self.COL_SIZE):
+            for i in range(self.chip_props["COL_SIZE"]):
                 self['CONF_SR']['EnColRO'][i] = bool(cols[i])
-        elif len(EnColRO) == self.COL_SIZE:
+        elif len(EnColRO) == self.chip_props["COL_SIZE"]:
             self['CONF_SR']['EnColRO'] = EnColRO
         else:
             pass  # if "keep" then keep the value
@@ -771,11 +802,14 @@ class Monopix2(Dut):
                 self['CONF_SR']['EnDataLVDS'] = 1
 
         self._write_pixel_mask(bit="EnPre", mask=mask)
+        
+        """
         self['CONF']['Rst'] = 1
         self['CONF'].write()
         time.sleep(0.001)
         self['CONF']['Rst'] = 0
         self['CONF'].write()
+        """
 
     def set_mon_en(self, pix="none", overwrite=False):
         """
@@ -794,7 +828,7 @@ class Monopix2(Dut):
         """   
         mask = self._create_mask(pix)
         self['CONF_SR']['EnMonitorCol'].setall(False)
-        for i in range(self.COL_SIZE):
+        for i in range(self.chip_props["COL_SIZE"]):
             self['CONF_SR']['EnMonitorCol'][i] = bool(np.any(mask[i,:]))
         self._write_pixel_mask(bit="EnMonitor", mask=mask, overwrite=overwrite)
       
@@ -818,7 +852,7 @@ class Monopix2(Dut):
         """   
         mask = self._create_mask(pix)
         self['CONF_SR']['InjEnCol'].setall(True)
-        for i in range(self.COL_SIZE):
+        for i in range(self.chip_props["COL_SIZE"]):
             # The mask is negative as InjEnCol is active Low, unlike EnColRO or EnMonitorCol
             self['CONF_SR']['InjEnCol'][i] = not bool(np.any(mask[i,:]))
         self._write_pixel_mask(bit="EnInj",mask=mask, overwrite=overwrite)
@@ -841,15 +875,15 @@ class Monopix2(Dut):
             mask.fill(tdac)
             self.logger.info("Setting a single TDAC/TRIM value to all pixels: {0:s}".format(str(tdac)))
         elif np.shape(tdac) == np.shape(mask):
-            self.logger.info("set_tdac: matrix")
+            self.logger.info("Setting a TDAC matrix of valid dimensions.")
             mask = np.array(tdac, dtype=np.uint8)
         else:
-            self.logger.error("The input tdac parameter must be int or array of size [{0:d},{1:d}]".format(self.COL_SIZE, self.ROW_SIZE))
+            self.logger.error("The input tdac parameter must be int or array of size [{0:d},{1:d}]".format(self.chip_props["COL_SIZE"], self.chip_props["ROW_SIZE"]))
             return 
 
         # Unpack the mask as 8 different masks, where the first 4 masks correspond to the 4 Trim bits.
         trim_bits = np.unpackbits(mask)
-        trim_bits_array = np.reshape(trim_bits, (self.COL_SIZE, self.ROW_SIZE, 8)).astype(np.bool)
+        trim_bits_array = np.reshape(trim_bits, (self.chip_props["COL_SIZE"], self.chip_props["ROW_SIZE"], 8)).astype(np.bool)
         # Write the mask for every trim bit.
         for bit in range(4):
             trim_bits_sel_mask = trim_bits_array[:, :, 7-bit]
@@ -901,7 +935,7 @@ class Monopix2(Dut):
         """  
         return self['fifo'].get_data()
 
-    def get_data(self, wait=0.2):
+    def get_data(self, wait=0.05):
         """
         Returns data on the FIFO generated by injected pulses.
         
@@ -921,20 +955,18 @@ class Monopix2(Dut):
         while self["inj"].is_done() != 1:
             time.sleep(0.001)
             raw = np.append(raw, self['fifo'].get_data())
-            #print("=====sim===== get_data len",len(raw),self["inj"].is_done())
             i = i+1
             if i > 10000:
                 break
         for i in range(10):
             pass
-            #print("=====sim===== get_data len", i, len(raw),self["inj"].is_done())
         time.sleep(wait)
         raw = np.append(raw, self['fifo'].get_data())
         if i > 10000:
             self.logger.info("get_data: error timeout len={0:d}".format(len(raw)))
         lost_cnt = self["data_rx"]["LOST_COUNT"]
         if self["data_rx"]["LOST_COUNT"]!=0:
-            self.logger.warn("get_data: error cnt={0:d}".format(lost_cnt))      
+            self.logger.warning("get_data: error cnt={0:d}".format(lost_cnt))      
         return raw
 
     def reset_monoread(self, wait=0.001, sync_timestamp=True, bcid_only=True):
@@ -1042,9 +1074,9 @@ class Monopix2(Dut):
         self['data_rx'].set_en(False)
         lost_cnt=self["data_rx"]["LOST_COUNT"]
         if lost_cnt != 0:
-            self.logger.warn("stop_monoread: error cnt={0:d}".format(lost_cnt))
+            self.logger.warning("Stopping Monopix Read-out: lost_cnt={0:d}".format(lost_cnt))
         #exp=self["data_rx"]["EXPOSURE_TIME"]
-        self.logger.info("stop_monoread:lost_cnt={0:d}".format(lost_cnt))
+        self.logger.info("Stopping Monopix Read-out: lost_cnt={0:d}".format(lost_cnt))
         self['CONF']['Rst'] = 1
         self['CONF']['ResetBcid'] = 1
         self['CONF']['ClkOut'] = 0
@@ -1061,26 +1093,26 @@ class Monopix2(Dut):
         tlu_delay: int
             Delay value to be set to the TLU (For regular cable lenghts 7 or 8 are reliable values)
         """
-        self.dut["tlu"]["RESET"]=1
-        self.dut["tlu"]["TRIGGER_MODE"]=3
-        self.dut["tlu"]["EN_TLU_VETO"]=0
-        self.dut["tlu"]["MAX_TRIGGERS"]=0
-        self.dut["tlu"]["TRIGGER_COUNTER"]=0
-        self.dut["tlu"]["TRIGGER_LOW_TIMEOUT"]=0
-        self.dut["tlu"]["TRIGGER_VETO_SELECT"]=0
-        self.dut["tlu"]["TRIGGER_THRESHOLD"]=0
-        self.dut["tlu"]["DATA_FORMAT"]=2
-        self.dut["tlu"]["TRIGGER_HANDSHAKE_ACCEPT_WAIT_CYCLES"]=20
-        self.dut["tlu"]["TRIGGER_DATA_DELAY"]=tlu_delay
-        self.dut["tlu"]["TRIGGER_SELECT"]=0
+        self["tlu"]["RESET"]=1
+        self["tlu"]["TRIGGER_MODE"]=3
+        self["tlu"]["EN_TLU_VETO"]=0
+        self["tlu"]["MAX_TRIGGERS"]=0
+        self["tlu"]["TRIGGER_COUNTER"]=0
+        self["tlu"]["TRIGGER_LOW_TIMEOUT"]=0
+        self["tlu"]["TRIGGER_VETO_SELECT"]=0
+        self["tlu"]["TRIGGER_THRESHOLD"]=0
+        self["tlu"]["DATA_FORMAT"]=2
+        self["tlu"]["TRIGGER_HANDSHAKE_ACCEPT_WAIT_CYCLES"]=20
+        self["tlu"]["TRIGGER_DATA_DELAY"]=tlu_delay
+        self["tlu"]["TRIGGER_SELECT"]=0
         self.logger.info("Setting TLU with a delay of {0:d}".format(tlu_delay))
-        self.dut["tlu"]["TRIGGER_ENABLE"]=1    
+        self["tlu"]["TRIGGER_ENABLE"]=1    
         
     def stop_tlu(self):
         """
         Disables the TLU (Trigger Logic Unit).
         """
-        self.dut["tlu"]["TRIGGER_ENABLE"]=0
+        self["tlu"]["TRIGGER_ENABLE"]=0
 
     def set_timestamp640(self, src="tlu"):
         """
@@ -1119,7 +1151,7 @@ class Monopix2(Dut):
         else: 
             self.logger.warning("*{0:s}* is not a valid input that can be sampled with a 640 MHz clock.".format(src))
             return
-        self.logger.info("640 MHz sampling enabled for: timestamp_{0:s} with INVERT={1:i}, ENABLE_EXTERN={2:i}, ENABLE_TRAILING={3:i}, ENABLE={4:i}".format(
+        self.logger.info("640 MHz sampling enabled for timestamp_{0:s} with: INVERT={1}, ENABLE_EXTERN={2}, ENABLE_TRAILING={3}, ENABLE={4}".format(
             src, self["timestamp_{0:s}".format(src)]["INVERT"], self["timestamp_{0:s}".format(src)]["ENABLE_EXTERN"], 
             self["timestamp_{0:s}".format(src)]["ENABLE_TRAILING"], self["timestamp_{0:s}".format(src)]["ENABLE"]))
         
@@ -1165,17 +1197,265 @@ class Monopix2(Dut):
         """
         vol=self["NTC"].get_voltage()
         if not (vol>0.5 and vol<1.5):
-          for i in np.arange(200,-200,-2):
-            self["NTC"].set_current(i,unit="uA")
-            self.SET_VALUE["NTC"]=i
-            time.sleep(0.1)
-            vol=self["NTC"].get_voltage()
-            if vol>0.7 and vol<1.3:
-                break
-          if abs(i)>190:
-            self.logger.info("temperature() NTC error")
+            for i in np.arange(200,-200,-2):
+                self["NTC"].set_current(i,unit="uA")
+                self.SET_VALUE["NTC"]=i
+                time.sleep(0.1)
+                vol=self["NTC"].get_voltage()
+                if vol>0.7 and vol<1.3:
+                    break
+            if abs(i)>190:
+                self.logger.info("temperature() NTC error")
         temp=np.empty(10)
         for i in range(len(temp)):
             temp[i]=self["NTC"].get_temperature("C")
         temp_mean=np.average(temp[temp!=float("nan")])
         return temp_mean
+
+    """
+    CONFIGURATION-RELATED FUNCTIONS
+    """
+
+    def save_config(self,fname=None):
+        """
+        Save the chip configuration as a yaml file. 
+
+        Parameters
+        ----------
+        fname: string
+            Name of the file to store the chip configuration. 
+        """
+        if fname==None:
+            fname=mk_fname(ext="config.yaml")
+
+        conf=self.get_configuration()
+        curr_status=self.power_status()
+        for pwr in self.PWR_CONF + self.VLT_CONF + self.CRR_CONF + ["INJ_HI","INJ_LO"]:
+            conf[pwr][pwr + '_set']=curr_status[pwr + '_set']
+            try:
+                conf[pwr][pwr + '[V]']=curr_status[pwr + '[V]']
+                conf[pwr][pwr + '[mA]']=curr_status[pwr + '[mA]']
+            except:
+                pass
+        conf['CONF_SR'].update(self.dac_status())
+
+        for k in self.PIXEL_CONF.keys():
+            conf["pix_"+k]=np.array(self.PIXEL_CONF[k],int).tolist()
+        
+        conf["chip_props"]=self.chip_props
+        #for k in ["ColRO_En","MON_EN","INJ_EN","BUFFER_EN","REGULATOR_EN"]:
+        #    conf[k]=self.dut["CONF_SR"][k].to01()
+        with open(fname,"w") as f:
+            yaml.dump(conf,f)
+        self.logger.info("Configuration saved to: %s"%fname)
+
+        return fname
+          
+    def load_config(self,fname):
+        """
+        Load the chip configuration from .npy, .h5 or .yaml files. 
+
+        Parameters
+        ----------
+        fname: string
+            Name of the file to load the chip configuration from. 
+        """
+        self.logger.info("Loading chip configuration from: {0:s}".format(fname))
+        if fname[-4:] ==".npy": #TODO
+            with open(fname,"rb") as f:
+                while True:
+                    try:
+                        ret=np.load(f).all()
+                    except:
+                        break
+            self.set_preamp_en(ret["pixlist"]) #TODO
+            self.set_th(1, ret["TH1"])
+            self.set_th(2, ret["TH2"])
+            self.set_th(3, ret["TH3"])
+            self.set_tdac(ret["tdac"]) #TODO
+            for k in ret["CONF_SR"].keys():
+                self.set_global_reg()
+                self.set_global_reg(LSBdacL=ret["LSBdacL"])
+
+        elif fname[-3:] ==".h5":
+            with tables.open_file(fname) as f:
+                # Load Power and Injection Amplitude.
+                try:
+                    pwr_tmp=yaml.full_load(f.root.meta_data.attrs.power_status)
+                except tables.AtributeError:
+                    pwr_tmp=yaml.full_load(f.root.meta_data.attrs.power_status_before)
+                power_ld={}
+                for pwr in self.PWR_CONF + self.VLT_CONF + self.CRR_CONF:
+                    power_ld[pwr]=pwr_tmp[pwr + '_set']
+                power_ld["VHi"]=pwr_tmp["INJ_HI_set"]
+                self.power_on(**power_ld)
+                # Load DAC configuration.
+                try:                       
+                    dac_ld=yaml.full_load(f.root.meta_data.attrs.dac_status)
+                except tables.AtributeError:
+                    dac_ld=yaml.full_load(f.root.meta_data.attrs.dac_status_before)
+                self.set_global_reg(**dac_ld)
+                # Load Firmware module configuration.
+                try:
+                    fmw_ld=yaml.full_load(f.root.meta_data.attrs.firmware)
+                except tables.AtributeError:
+                    fmw_ld=yaml.full_load(f.root.meta_data.attrs.firmware_before)
+                for module in ["data_rx", "gate", "inj"
+                            , "timestamp_tlu", "timestamp_inj", "timestamp_rx1", "timestamp_mon"
+                            , "tlu"]:
+                    mod_str=""
+                    for reg in fmw_ld[module]:
+                        self[module][reg] = fmw_ld[module][reg]
+                        mod_str = mod_str+" %s=%d,"%(reg,fmw_ld[module][reg])
+                    s="Loading configuration for module: {0:s} ({1:s}) ".format(module, mod_str[:-1])
+                    self.logger.info(s)
+                # Load pixel configurations (EnPre, EnInj, EnMonitor, Trim).
+                pixel_conf_ld={}
+                try: 
+                    pixel_conf_tmp=f.root.pixel_conf
+                except tables.NoSuchNodeError:
+                    pixel_conf_tmp=f.root.pixel_conf_before
+                for k in self.PIXEL_CONF.keys():
+                    pixel_conf_ld[k] = pixel_conf_tmp[k][:]
+                self.set_tdac(np.array(pixel_conf_ld["Trim"],int).tolist())
+                self.set_mon_en(np.array(pixel_conf_ld["EnMonitor"],int).tolist())
+                self.set_inj_en(np.array(pixel_conf_ld["EnInj"],int).tolist())
+                self.set_preamp_en(np.array(pixel_conf_ld["EnPre"],int).tolist(),
+                            EnColRO=fmw_ld["CONF_SR"]["EnColRO"][:])
+                # Load chip column properties
+                try:
+                    props_ld=yaml.full_load(f.root.meta_data.attrs.chip_props)
+                except tables.AtributeError:
+                    pass
+                self.chip_props=props_ld
+            return power_ld, dac_ld, fmw_ld, pixel_conf_ld
+
+        elif fname[-5:] ==".yaml":
+            with open(fname) as f:
+                conf_ld=yaml.full_load(f)
+            # Load Power and Injection Amplitude.
+            power_ld={}
+            for pwr in self.PWR_CONF + self.VLT_CONF + self.CRR_CONF:
+                power_ld[pwr]=conf_ld[pwr][pwr + '_set']
+            power_ld["VHi"]=conf_ld["INJ_HI"]["INJ_HI_set"]
+            self.power_on(**power_ld)
+            # Load DAC configuration.
+            dac_ld={}
+            for k in conf_ld["CONF_SR"].keys():
+                dac_ld[k]=conf_ld["CONF_SR"][k]
+            self.set_global_reg(**dac_ld)
+            # Load Firmware module configuration.
+            fmw_ld=conf_ld
+            for module in ["data_rx", "gate", "inj"
+                            , "timestamp_tlu", "timestamp_inj", "timestamp_rx1", "timestamp_mon"
+                            , "tlu"]:
+                mod_str=""
+                for reg in fmw_ld[module]:
+                    self[module][reg] = fmw_ld[module][reg]
+                    mod_str = mod_str+" %s=%d,"%(reg,fmw_ld[module][reg])
+                s="Loading configuration for module: {0:s} ({1:s}) ".format(module, mod_str[:-1])
+                self.logger.info(s)
+            # Load pixel configurations (EnPre, EnInj, EnMonitor, Trim).
+            pixel_conf_ld={}
+            for k in self.PIXEL_CONF.keys():
+                pixel_conf_ld[k] = conf_ld['pix_'+k][:]
+            self.set_tdac(np.array(pixel_conf_ld["Trim"],int).tolist())
+            self.set_mon_en(np.array(pixel_conf_ld["EnMonitor"],int).tolist())
+            self.set_inj_en(np.array(pixel_conf_ld["EnInj"],int).tolist())
+            self.set_preamp_en(np.array(pixel_conf_ld["EnPre"],int).tolist(),
+                        EnColRO=fmw_ld["CONF_SR"]["EnColRO"][:])
+            return power_ld, dac_ld, fmw_ld, pixel_conf_ld
+
+        else:
+            self.logger.warning("*{0:s}* is not a valid configuration file. The chip will keep its previous configuration.".format(fname))
+
+
+    def load_additional_tdac(self,fname, col_list=None): #TODO
+        if fname[-3:] ==".h5":
+            with tables.open_file(fname) as f:
+                ret=yaml.load(f.root.meta_data.attrs.power_status)
+                power={}
+                for k in  ['BL', 'TH', 'VCascC', 'VCascN',"INJ_HI","INJ_LO", "VPFB_mon", "LSBdacL_mon", "VPLoad_mon","PBias_mon","NTC"]:
+                    dac=yaml.load(f.root.meta_data.attrs.dac_status)
+                    ret=yaml.load(f.root.meta_data.attrs.firmware)
+                    tmp=yaml.load(f.root.meta_data.attrs.pixel_conf)
+            loaded_tdac=np.copy(tmp["TRIM_EN"])
+            curr_tdac=self.get_tdac_memory()
+            for col in col_list:
+                curr_tdac[col]=loaded_tdac[col]
+            self.set_tdac(np.array(curr_tdac,int).tolist())
+
+    def show(self,config_id="all", show_plot=False):
+        """
+        Logs general information about the current status of the chip. 
+
+        Parameters
+        ----------
+        pix_mask_id: string
+            - "power": Logs Power status
+            - "dac": Logs DAC status
+            - "Trim": Logs TDAC mask.
+            - "EnPre": Logs Preamplifier mask.
+            - "EnInj": Logs Injection mask.
+            - "EnMonitor": Logs Monitor mask.
+        """
+        if config_id=="all" or config_id=="power":
+            ret=self.power_status()
+            self.logger.info("Power"+": "+str(ret))
+        if config_id=="all" or config_id=="dac":
+            ret=self.dac_status()
+            self.logger.info("DACs"+": "+str(ret))
+        if config_id=="all" or config_id=="Trim":
+            pix_conf_list = np.array(self.PIXEL_CONF["Trim"],int)
+            self.logger.info("Trim"+": "+str(pix_conf_list.tolist()))
+        if config_id=="all" or config_id=="EnPre":
+            pix_conf_list = np.array(self.PIXEL_CONF["EnPre"],int)
+            self.logger.info("EnPre"+": "+str(pix_conf_list.tolist()))
+        if config_id=="all" or config_id=="EnInj":
+            pix_conf_list = np.array(self.PIXEL_CONF["EnInj"],int)
+            self.logger.info("EnInj"+": "+str(pix_conf_list.tolist()))
+        if config_id=="all" or config_id=="EnMonitor":
+            pix_conf_list = np.array(self.PIXEL_CONF["EnMonitor"],int)
+            self.logger.info("EnMonitor"+": "+str(pix_conf_list.tolist()))
+
+    def default_TDAC_mask(self, unbiased = False, limit=None):
+        """
+        Generates a TDAC mask at specific default values. 
+        If "unbiased" is False and "limit" is "None" -or not a boolean-, it will return a mask full of zeroes.
+
+        Parameters
+        ----------
+        unbiased: bool
+            A boolean indicating if the TDAC mask should be one with unbiased TRIM values
+            ("0" for flavours with uni-directional tuning and "7" for those with bi-directional tuning)
+        limit: bool
+            A boolean indicating if the TDAC mask should be the one corresponding to the highest per-pixel tuning thresholds.
+            True: Highest tuning threshold ("15" for uni-directional tuning and "0" for bi-directional tuning)
+            False: Highest tuning threshold ("0" for uni-directional tuning and "15" for bi-directional tuning)
+        """   
+        tdac_unidir_tuning = 0
+        tdac_bidir_tuning = 0
+
+        if unbiased == True:
+            self.logger.info("Creating a TDAC mask for unbiased discriminator TRIM settings...")
+            tdac_bidir_tuning = 7
+        elif unbiased == False:
+            if limit is not None and isinstance(limit, bool):
+                if limit == True:
+                    self.logger.info("Creating a TDAC mask for the highest per-pixel tuning thresholds...")
+                    tdac_unidir_tuning = 15
+                else:
+                    self.logger.info("Creating a TDAC mask for the lowest per-pixel tuning thresholds...")
+                    tdac_unidir_tuning = 0
+                    tdac_bidir_tuning = 15
+            else:
+                self.logger.info("Creating a TDAC mask full of zeroes...")
+                pass
+
+        tdac_mask=np.full((self.chip_props["COL_SIZE"],self.chip_props["ROW_SIZE"]), tdac_unidir_tuning, dtype=int)
+        for col in self.chip_props["COLS_TUNING_BI"]:
+            tdac_mask[col][:]=tdac_bidir_tuning
+
+        return tdac_mask
+
+

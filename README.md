@@ -19,7 +19,7 @@ This repository contains a firmware and Python3-based DAQ software required to o
     
     - **If you want to add the packages to your default installation or an environment you already created**, install the suggested packages by running the following commands:
 
-        ``$ conda install numpy pyyaml bitarray six cython scipy numba matplotlib future numexpr dill numpydoc tqdm mock nose pyqtgraph pyserial pyzmq contextlib2 psutil testfixtures qtpy zeromq pyqtgraph pyqt jupyter notebook``
+        ``$ conda install numpy pyyaml bitarray six cython scipy numba matplotlib future numexpr dill numpydoc tqdm mock nose pyqtgraph pyserial pyzmq contextlib2 psutil testfixtures qtpy zeromq pyqtgraph math tqdm pyqt jupyter notebook``
         
         ``$ pip install tables progressbar-latest pyvisa-py pyvisa``
 
@@ -37,6 +37,14 @@ This repository contains a firmware and Python3-based DAQ software required to o
 
     ``$ python setup.py develop``
 
+-   **Install Pixel Clusterizer** (https://github.com/SiLab-Bonn/pixel_clusterizer)
+
+    ``$ git clone https://github.com/SiLab-Bonn/pixel_clusterizer``
+    
+    ``$ cd pixel_clusterizer``
+    
+    ``$ python setup.py develop``
+
 -   **Additional (optional) installations**:
 
     Even though tested branches of BASIL and the SiTCP library have already been cloned together with this repository to make the current firmware compilation reliable, it might be useful to have a full independent installation of BASIL on your conda environment to control additional devices or future custom firmware development.
@@ -48,6 +56,14 @@ This repository contains a firmware and Python3-based DAQ software required to o
         ``$ cd basil``
         
         ``$ pip install -e .``
+
+    -	**online_monitor** (https://github.com/SiLab-Bonn/basil)
+
+        ``$ git clone https://github.com/SiLab-Bonn/online_monitor``
+
+        ``$ cd online_monitor``
+        
+        ``$ python setup.py develop``
 ## FPGA Firmware compilation
 ------
 
