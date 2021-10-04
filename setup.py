@@ -14,13 +14,13 @@ author = 'Ivan Caicedo, Tomasz Hemperek, Toko Hirono'
 author_email = 'caicedo@physik.uni-bonn.de'
 
 # requirements for core functionality
-install_requires = [bitarray', 'matplotlib', 'numba', 'numpy', 'pyyaml', 'scipy', 'tables', 'tqdm']
+install_requires = ['bitarray', 'matplotlib', 'numba', 'numpy', 'pyyaml', 'scipy', 'tables', 'tqdm']
 
 setup(
     name='monopix2_daq',
     version=version,
     description='DAQ for the LF-Monopix2 DMAPS prototype',
-    url='https://github.com/SiLab-Bonn/lf-monopix2-daq/,
+    url='https://github.com/SiLab-Bonn/lf-monopix2-daq/',
     license='',
     long_description='',
     author=author,
