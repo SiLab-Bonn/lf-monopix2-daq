@@ -1,16 +1,41 @@
 import os,sys,time
 import numpy as np
+from numpy.core.defchararray import array
 import bitarray
 import tables as tb
 import yaml
 import basil
 import logging
+import zmq
 
 from monopix2_daq import monopix2
 from monopix2_daq.fifo_readout import FifoReadout
 from contextlib import contextmanager
 
 import online_monitor
+from online_monitor.utils import utils as ou
+
+
+def send_data(socket, data, scan_par_id, index_start, index_stop, data_length, name='ReadoutData'):
+    '''
+    Sends the data of every read out (raw data and meta data) via ZeroMQ to a specified socket.
+    Uses a serialization provided by the online_monitor package
+    '''
+    data_meta_data = dict(
+        index_start=index_start,
+        index_stop=index_stop,
+        data_length=data_length,
+        timestamp_start=data[1],
+        timestamp_stop=data[2],
+        scan_par_id=scan_par_id,
+        error=data[3]
+    )
+
+    try:
+        data_ser = ou.simple_enc(data[0], meta=data_meta_data)
+        socket.send(data_ser, flags=zmq.NOBLOCK)
+    except zmq.Again:
+        pass
 
 class MetaTable(tb.IsDescription):
     index_start = tb.UInt32Col(pos=0)
@@ -76,7 +101,8 @@ class ScanBase(object):
         self.scan_start_time=time.localtime()
 
         # Assign the socket where the data will be sent (For online monitoring)
-        self.socket=online_monitor_addr
+        self.socket = online_monitor_addr
+        self.context = zmq.Context.instance()
             
         # Define filters for table output data
         self.filter_raw_data = tb.Filters(complib='blosc', complevel=5, fletcher32=False)
@@ -129,8 +155,12 @@ class ScanBase(object):
             self.socket=None
         else:
             try:
-                self.socket=online_monitor.sender.init(self.socket)
-            except:
+                socket_addr = self.socket
+                self.socket = self.context.socket(zmq.PUB) # publisher socket
+                self.socket.setsockopt(zmq.LINGER, 0)
+                self.socket.bind(socket_addr)
+                # self.log.debug('Sending data to server %s', socket_addr)
+            except zmq.error.ZMQError:
                 self.logger.warn('ScanBase.start:sender.init failed addr=%s'%self.socket)
                 self.socket=None
         
@@ -232,22 +262,15 @@ class ScanBase(object):
         self.meta_data_table.row['error'] = data_tuple[3]
         self.meta_data_table.row['data_length'] = len_raw_data
         self.meta_data_table.row['index_start'] = total_words
+        temp_index=total_words
         total_words += len_raw_data
         self.meta_data_table.row['index_stop'] = total_words
         self.meta_data_table.row['scan_param_id'] = self.scan_param_id
         self.meta_data_table.row.append()
         self.meta_data_table.flush()
         
-        if self.socket!=None:
-            try:
-                online_monitor.sender.send_data(self.socket,data_tuple,scan_parameters={'scan_param_id':self.scan_param_id})
-            except:
-                self.logger.warn('ScanBase.handle_data:sender.send_data failed')
-                try:
-                    online_monitor.sender.close(self.socket)
-                except:
-                    pass
-                self.socket=None
+        if self.socket:
+            send_data(self.socket, data=data_tuple, scan_par_id=self.scan_param_id,index_start=temp_index, index_stop=total_words, data_length=len_raw_data)
 
     def handle_err(self, exc):
         '''
@@ -267,3 +290,16 @@ class ScanBase(object):
             self.fifo_readout.stop(timeout=0)
         except RuntimeError:
             self.logger.info("Fifo has been already closed")
+        self._close_sockets()
+
+    def _close_sockets(self):
+        if self.context:
+            try:
+                if self.socket:
+                    # self.log.debug('Closing socket connection')
+                    self.socket.close()
+                    self.socket = None
+            except AttributeError:
+                pass
+        self.context.term()
+        self.context = None
