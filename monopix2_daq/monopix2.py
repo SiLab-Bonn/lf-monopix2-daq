@@ -92,9 +92,6 @@ class Monopix2(Dut):
             self.REG_CONF[field['name']]=self["CONF_SR"][field['name']]
 
         # Initialize relevant dictionaries for masks of pixel bit arrays.
-        # self.PIXEL_CONF = {'EnPre': np.full([self.chip_props["COL_SIZE"],self.chip_props["ROW_SIZE"]], False, dtype = np.bool),
-        #                'EnInj'   : np.full([self.chip_props["COL_SIZE"],self.chip_props["ROW_SIZE"]], False, dtype = np.bool),
-        #                'EnMonitor'   : np.full([self.chip_props["COL_SIZE"],self.chip_props["ROW_SIZE"]], False, dtype = np.bool),
         self.PIXEL_CONF = {'EnPre': np.full([self.chip_props["COL_SIZE"],self.chip_props["ROW_SIZE"]], 0, dtype = np.uint8),
                        'EnInj'   : np.full([self.chip_props["COL_SIZE"],self.chip_props["ROW_SIZE"]], 0, dtype = np.uint8),
                        'EnMonitor'   : np.full([self.chip_props["COL_SIZE"],self.chip_props["ROW_SIZE"]], 0, dtype = np.uint8),
@@ -748,21 +745,24 @@ class Monopix2(Dut):
         # A list, tuple or np.ndarray as input
         elif isinstance(pix, (list, tuple, np.ndarray)):
             mask.fill(0)
-            # Single pixel format: e.g. pix=[20,60]
-            if isinstance(pix[0], int):
-                mask[pix[0], pix[1]] = 1
-            # A matrix of the same dimensions as the chip
-            elif len(pix) == self.chip_props["COL_SIZE"] and len(pix[0]) == self.chip_props["ROW_SIZE"]:
-                mask[:, :] = np.array(pix, np.bool)
-            # A list of pixels: e.g. pix=[[20,60],[20,61],[20,62]]
+            if len(pix)>0:
+                # Single pixel format: e.g. pix=[20,60]
+                if isinstance(pix[0], int):
+                    mask[pix[0], pix[1]] = 1
+                # A matrix of the same dimensions as the chip
+                elif len(pix) == self.chip_props["COL_SIZE"] and len(pix[0]) == self.chip_props["ROW_SIZE"]:
+                    mask[:, :] = np.array(pix, np.bool)
+                # A list of pixels: e.g. pix=[[20,60],[20,61],[20,62]]
+                else:
+                    for p in pix:
+                        if len(p)==2 and isinstance(p[0], int) and isinstance(p[1], int):
+                            mask[p[0], p[1]] = 1
+                        else: 
+                            self.logger.info("The listed item {0:s} does not correspond to a valid pixel format.".format(p))
+                            mask.fill(np.NaN)
+                            break
             else:
-                for p in pix:
-                    if len(p)==2 and isinstance(p[0], int) and isinstance(p[1], int):
-                        mask[p[0], p[1]] = 1
-                    else: 
-                        self.logger.info("The listed item {0:s} does not correspond to a valid pixel format.".format(p))
-                        mask.fill(np.NaN)
-                        break
+                self.logger.info("No pixels given as input for mask creaton.")
         else:
             self.logger.info("You have not specified a valid input for mask creation. Please check the code documentation.")
         return mask
@@ -1102,11 +1102,13 @@ class Monopix2(Dut):
         self["tlu"]["TRIGGER_VETO_SELECT"]=0
         self["tlu"]["TRIGGER_THRESHOLD"]=0
         self["tlu"]["DATA_FORMAT"]=2
-        self["tlu"]["TRIGGER_HANDSHAKE_ACCEPT_WAIT_CYCLES"]=20
+        self["tlu"]["TRIGGER_HANDSHAKE_ACCEPT_WAIT_CYCLES"]=10
         self["tlu"]["TRIGGER_DATA_DELAY"]=tlu_delay
         self["tlu"]["TRIGGER_SELECT"]=0
-        self.logger.info("Setting TLU with a delay of {0:d}".format(tlu_delay))
-        self["tlu"]["TRIGGER_ENABLE"]=1    
+        self["tlu"]["TRIGGER_ENABLE"]=1  
+
+        self.logger.info("Setting TLU: TRIGGER_MODE={}, DATA_FORMAT={}, TRIGGER_HANDSHAKE_ACCEPT_WAIT_CYCLES={}, TRIGGER_DATA_DELAY={}, TRIGGER_ENABLE={}"
+        .format(self["tlu"]["TRIGGER_MODE"], self["tlu"]["DATA_FORMAT"], self["tlu"]["TRIGGER_HANDSHAKE_ACCEPT_WAIT_CYCLES"], self["tlu"]["TRIGGER_DATA_DELAY"], self["tlu"]["TRIGGER_ENABLE"]))
         
     def stop_tlu(self):
         """
@@ -1438,7 +1440,6 @@ class Monopix2(Dut):
 
         if unbiased == True:
             self.logger.info("Creating a TDAC mask for unbiased discriminator TRIM settings...")
-            tdac_bidir_tuning = 7
         elif unbiased == False:
             if limit is not None and isinstance(limit, bool):
                 if limit == True:
@@ -1454,7 +1455,11 @@ class Monopix2(Dut):
 
         tdac_mask=np.full((self.chip_props["COL_SIZE"],self.chip_props["ROW_SIZE"]), tdac_unidir_tuning, dtype=int)
         for col in self.chip_props["COLS_TUNING_BI"]:
-            tdac_mask[col][:]=tdac_bidir_tuning
+            if unbiased==False:
+                tdac_mask[col][:]=tdac_bidir_tuning
+            elif unbiased==True:
+                tdac_mask[col,0:self.chip_props["ROW_SIZE"]:1] = 7
+                tdac_mask[col,0:self.chip_props["ROW_SIZE"]:2] = 8
 
         return tdac_mask
 

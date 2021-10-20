@@ -234,7 +234,7 @@ registers:
         VPFoll    : 15
         VNLoad    : 13
         VPLoad    : 7
-        TDAC_LSB  : 12
+        TDAC_LSB  : 26
         Vsf       : 32
         Driver    : 32
         Mon_Vsf   : 0

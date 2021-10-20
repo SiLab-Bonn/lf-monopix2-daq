@@ -81,7 +81,7 @@ This repository contains a firmware and Python3-based DAQ software required to o
 
     ``$ vivado -mode tcl -source run.tcl`` 
 
-    If the compilation finished without errors after running this script, the bin and bit files will be placed under: ``PATH_TO_LF2DAQ/lf-monopix2-daq/firmware/vivado/bit/`` 
+    If the compilation finished without errors after running this script, the bin and bit files will be placed under: ``PATH_TO_LF2DAQ/lf-monopix2-daq/firmware/bit/`` 
 
 ## Repository structure
 ------

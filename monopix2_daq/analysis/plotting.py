@@ -108,6 +108,21 @@ class Plotting(object):
             self.create_cluster_shape_plot()
             self.create_cluster_size_plot()
 
+    def create_config_table(self):
+        try:
+            dat=self.run_config["power_status"]
+            dat.update(self.run_config["dac_status"])
+            self.table_values(dat=dat, title="Chip configuration")
+        except Exception:
+            self.logger.error('Not possible to make a table for the final configuration values.')
+
+        try:
+            dat=self.run_config["power_status_before"]
+            dat.update(self.run_config["dac_status_before"])
+            self.table_values(dat=dat, title="Chip configuration (Initial)")
+        except Exception:
+            self.logger.error('Not possible to make a table for the initial configuration values.')
+
     def create_occupancy_map(self):
         try:
             if self.run_config['scan_id'] in ['scan_threshold', 'threshold_tuning']:
@@ -188,55 +203,9 @@ class Plotting(object):
             self.logger.error('Could not create scurve plot!')
 
     def create_threshold_plot(self, logscale=False, scan_parameter_name='Scan parameter', electron_axis=False):
-        #try:
-        title = 'Threshold distribution'
-        if self.run_config['scan_id'] in ['scan_threshold', 'in_time_threshold_scan', 'crosstalk_scan']:
-            # plot_range = [v - self.run_config['VCAL_MED'] for v in range(self.run_config['VCAL_HIGH_start'],
-            #                                                              self.run_config['VCAL_HIGH_stop'] + 1,
-            #                                                              self.run_config['VCAL_HIGH_step'])]
-            #plot_range = np.arange(0.5, 80.5, 1)  # TODO: Get from scan
-            plot_range = None
-        # elif self.run_config['scan_id'] == 'fast_threshold_scan':
-        #     plot_range = np.array(self.scan_params[:]['vcal_high'] - self.scan_params[:]['vcal_med'], dtype=np.float)
-        #     scan_parameter_name = '$\Delta$ DU'
-        #     electron_axis = True
-        # elif self.run_config['scan_id'] == 'global_threshold_tuning':
-        #     plot_range = range(self.run_config['VTH_stop'],
-        #                        self.run_config['VTH_start'],
-        #                        self.run_config['VTH_step'])
-        #     scan_parameter_name = self.run_config['VTH_name']
-        #     electron_axis = False
-        # elif self.run_config['scan_id'] == 'injection_delay_scan':
-        #     scan_parameter_name = 'Finedelay [LSB]'
-        #     electron_axis = False
-        #     plot_range = range(0, 16)
-        #     title = 'Fine delay distribution for enabled pixels'
-
-        mask = np.full((COL_SIZE, ROW_SIZE), False)
-        sel = np.logical_and(self.Chi2Map > 0., self.ThresholdMap > 0)  # Mask not converged fits (chi2 = 0)
-        mask[~sel] = True
-
-        data = np.ma.masked_array(self.ThresholdMap, mask)
-        data_th = data[:,:]
-
-        self._plot_distribution(data_th.T,
-                                plot_range=plot_range,
-                                electron_axis=electron_axis,
-                                x_axis_title=scan_parameter_name,
-                                title="Threshold distribution",
-                                log_y=logscale,
-                                print_failed_fits=False,
-                                suffix='threshold_distribution')
-        #except Exception as e:
-        #    self.logger.error('Could not create threshold plot! ({0})'.format(e))
-
-    def create_noise_plot(self, logscale=False, scan_parameter_name='Scan parameter', electron_axis=False):
         try:
             title = 'Threshold distribution'
-            if self.run_config['scan_id'] in ['scan_threshold', 'in_time_threshold_scan', 'crosstalk_scan']:
-                # plot_range = [v - self.run_config['VCAL_MED'] for v in range(self.run_config['VCAL_HIGH_start'],
-                #                                                              self.run_config['VCAL_HIGH_stop'] + 1,
-                #                                                              self.run_config['VCAL_HIGH_step'])]
+            if self.run_config['scan_id'] in ['scan_threshold']:
                 #plot_range = np.arange(0.5, 80.5, 1)  # TODO: Get from scan
                 plot_range = None
             # elif self.run_config['scan_id'] == 'fast_threshold_scan':
@@ -259,6 +228,46 @@ class Plotting(object):
             sel = np.logical_and(self.Chi2Map > 0., self.ThresholdMap > 0)  # Mask not converged fits (chi2 = 0)
             mask[~sel] = True
 
+            data = np.ma.masked_array(self.ThresholdMap, mask)
+            data_th = data[:,:]
+
+            self._plot_distribution(data_th.T,
+                                    plot_range=plot_range,
+                                    electron_axis=electron_axis,
+                                    x_axis_title=scan_parameter_name,
+                                    title="Threshold distribution",
+                                    log_y=logscale,
+                                    print_failed_fits=False,
+                                    suffix='threshold_distribution')                    
+        except Exception as e:
+            self.logger.error('Could not create threshold plot! ({0})'.format(e))
+
+    def create_noise_plot(self, logscale=False, scan_parameter_name='Scan parameter', electron_axis=False):
+        try:
+            title = 'Threshold distribution'
+            if self.run_config['scan_id'] in ['scan_threshold']:
+                #plot_range = np.arange(0.5, 80.5, 1)  # TODO: Get from scan
+                plot_range = None
+            # elif self.run_config['scan_id'] == 'fast_threshold_scan':
+            #     plot_range = np.array(self.scan_params[:]['vcal_high'] - self.scan_params[:]['vcal_med'], dtype=np.float)
+            #     scan_parameter_name = '$\Delta$ DU'
+            #     electron_axis = True
+            # elif self.run_config['scan_id'] == 'global_threshold_tuning':
+            #     plot_range = range(self.run_config['VTH_stop'],
+            #                        self.run_config['VTH_start'],
+            #                        self.run_config['VTH_step'])
+            #     scan_parameter_name = self.run_config['VTH_name']
+            #     electron_axis = False
+            # elif self.run_config['scan_id'] == 'injection_delay_scan':
+            #     scan_parameter_name = 'Finedelay [LSB]'
+            #     electron_axis = False
+            #     plot_range = range(0, 16)
+            #     title = 'Fine delay distribution for enabled pixels'
+
+            mask = np.full((COL_SIZE, ROW_SIZE), False)
+            sel = self.Chi2Map[:] > 0.  # Mask not converged fits (chi2 = 0)
+            mask[~sel] = True
+
             data = np.ma.masked_array(self.NoiseMap, mask)
             data_th = data[:,:]
 
@@ -272,6 +281,63 @@ class Plotting(object):
                                     suffix='enc_distribution')
         except Exception as e:
             self.logger.error('Could not create noise plot! ({0})'.format(e))
+
+    def create_tdac_plot(self, logscale=False, scan_parameter_name='Scan parameter', electron_axis=False):
+        try:
+            title = 'TRIM distribution'
+            if self.run_config['scan_id'] in ['tune_threshold_inj', 'scan_threshold']:
+                plot_range = np.arange(0,16,1)
+            # elif self.run_config['scan_id'] == 'fast_threshold_scan':
+            #     plot_range = np.array(self.scan_params[:]['vcal_high'] - self.scan_params[:]['vcal_med'], dtype=np.float)
+            #     scan_parameter_name = '$\Delta$ DU'
+            #     electron_axis = True
+            # elif self.run_config['scan_id'] == 'global_threshold_tuning':
+            #     plot_range = range(self.run_config['VTH_stop'],
+            #                        self.run_config['VTH_start'],
+            #                        self.run_config['VTH_step'])
+            #     scan_parameter_name = self.run_config['VTH_name']
+            #     electron_axis = False
+            # elif self.run_config['scan_id'] == 'injection_delay_scan':
+            #     scan_parameter_name = 'Finedelay [LSB]'
+            #     electron_axis = False
+            #     plot_range = range(0, 16)
+            #     title = 'Fine delay distribution for enabled pixels'
+
+            mask = np.full((COL_SIZE, ROW_SIZE), False)
+            cnt=0
+            for i in np.ravel(self.Trim[self.Trim[:]== 8]):
+                cnt+=1
+            print ("Counts in trim", str(cnt))
+
+            cnt=0
+            for i in np.ravel(self.Trim[self.EnPre[:]== 1]):
+                cnt+=1
+            print ("Counts in preamp", str(cnt))
+
+            sel = np.logical_and(self.EnPre[:] == 1, self.Trim[:] < 17)  
+            mask[~sel] = True
+            cnt=0
+            for i in np.ravel(mask[mask[:]== False]):
+                cnt+=1
+            print ("Counts in mask", str(cnt))
+
+
+            data = np.ma.masked_array(self.Trim, mask)
+            data_tdac = np.ravel(data[sel])
+            print (len(data_tdac))
+
+            self._plot_distribution(data_tdac,
+                                    plot_range=plot_range,
+                                    electron_axis=electron_axis,
+                                    x_axis_title=scan_parameter_name,
+                                    title="TDAC distribution",
+                                    log_y=logscale,
+                                    print_failed_fits=False,
+                                    suffix='tdac_distribution',
+                                    unit_raw="TRIM"
+                                    )
+        except Exception as e:
+            self.logger.error('Could not create TDAC distribution plot! ({0})'.format(e))
 
     def create_cluster_size_plot(self):
         try:
@@ -383,7 +449,8 @@ class Plotting(object):
 
         self._save_plots(fig, suffix=suffix)
 
-    def _plot_distribution(self, data, plot_range=None, x_axis_title=None, electron_axis=False, use_electron_offset=False, y_axis_title='N. of hits', log_y=False, align='edge', title=None, print_failed_fits=False, suffix=None):
+    def _plot_distribution(self, data, plot_range=None, x_axis_title=None, electron_axis=False, use_electron_offset=False, y_axis_title='N. of hits', 
+                        log_y=False, align='edge', title=None, print_failed_fits=False, suffix=None, unit_raw="V", unit_cal="e^-"):
         if plot_range is None:
             diff = np.amax(data) - np.amin(data)
             #if (np.amax(data)) > np.median(data) * 5:
@@ -391,9 +458,14 @@ class Plotting(object):
             #else:
             plot_range = np.arange(np.amin(data)- diff / 10., np.amax(data) + diff / 10., diff / 100.)
 
+        diff = np.amax(data) - np.amin(data)
         tick_size = np.diff(plot_range)[0]
 
-        hist, bins = np.histogram(np.ravel(data), bins=plot_range)
+        #hist, bins = np.histogram(np.ravel(data), bins=plot_range)
+        #total_counts = len(np.ravel(data))
+
+        hist, bins = np.histogram(data, bins=plot_range)
+        total_counts = len(data)
 
         bin_centers = (bins[:-1] + bins[1:]) / 2
         p0 = (np.amax(hist), np.nanmean(bins),
@@ -413,9 +485,7 @@ class Plotting(object):
         fig = Figure()
         FigureCanvas(fig)
         ax = fig.add_subplot(111)
-        # self._add_text(fig)
 
-        #ax.bar(bins[:-1], hist, width=tick_size, align=align)
         ax.step(bin_centers, hist, color='C0', where='mid', linewidth=1)
 
         if coeff is not None:
@@ -439,34 +509,80 @@ class Plotting(object):
             rms = np.nanstd(data)
             if np.nanmean(data) < 10:
                 if electron_axis:
-                    textright = '$\mu={0:1.3f}\;V$\n$\;\;\;\;\;\;({1:d} \; e^-)$\n\n$\sigma={2:1.3f}\;V$\n$\;\;\;\;\;\;({3:d} \; e^-)$'.format(
-                        mean, int(self._convert_to_e(mean, use_offset=use_electron_offset)[0]), rms, int(self._convert_to_e(rms, use_offset=False)[0]))
+                    textright = '$\mu={0:1.3f}\;{1:s}$\n$\;\;\;\;\;\;({2:d} \; {3:s})$\n\n$\sigma={4:1.3f}\;{5:s}$\n$\;\;\;\;\;\;({6:d} \; {7:s})$'.format(
+                        mean, 
+                        unit_raw,
+                        int(self._convert_to_e(mean, use_offset=use_electron_offset)[0]), 
+                        unit_cal,
+                        rms, 
+                        unit_raw,
+                        int(self._convert_to_e(rms, use_offset=False)[0]),
+                        unit_cal)
                 else:
-                    textright = '$\mu={0:1.3f}\;V$\n$\sigma={1:1.3f}\;V$'.format(mean, rms)
+                    textright = '$\mu={0:1.3f}\;{1:s}$\n$\sigma={2:1.3f}\;{3:s}$'.format(
+                        mean, 
+                        unit_raw,
+                        rms,
+                        unit_raw)
             else:
                 if electron_axis:
-                    textright = '$\mu={0:1.3f}\;V\n$\;\;\;\;\;\;({3:d} \; e^-)$\n\n$\sigma={2:0.3f}\;V\n$\;\;\;\;\;\;({3:d} \; e^-)$'.format(
-                        mean, int(self._convert_to_e(mean, use_offset=use_electron_offset)[0]), rms, int(self._convert_to_e(rms, use_offset=False)[0]))
+                    textright = '$\mu={0:1.3f}\;{1:s}$\n$\;\;\;\;\;\;({2:d} \; {3:s})$\n\n$\sigma={4:1.3f}\;{5:s}$\n$\;\;\;\;\;\;({6:d} \; {7:s})$'.format(
+                        mean, 
+                        unit_raw,
+                        int(self._convert_to_e(mean, use_offset=use_electron_offset)[0]), 
+                        unit_cal,
+                        rms, 
+                        unit_raw,
+                        int(self._convert_to_e(rms, use_offset=False)[0]),
+                        unit_cal)
                 else:
-                    textright = '$\mu={0:1.3f}\;V$\n$\sigma={1:0.3f}\;V$'.format(mean, rms)
+                    textright = '$\mu={0:1.3f}\;{1:s}$\n$\sigma={2:1.3f}\;{3:s}$'.format(
+                        mean, 
+                        unit_raw,
+                        rms,
+                        unit_raw)
 
             # Fit results
             if coeff is not None:
                 textright += '\n\nFit results:\n'
                 if coeff[1] < 10:
                     if electron_axis:
-                        textright += '$\mu={0:1.3f}\;V$\n$\;\;\;\;\;\;({1:d} \; e^-)$\n\n$\sigma={2:1.3f}\;V$\n$\;\;\;\;\;\;({3:d} \; e^-)$'.format(
-                            abs(coeff[1]), int(self._convert_to_e(abs(coeff[1]), use_offset=use_electron_offset)[0]), abs(coeff[2]), int(self._convert_to_e(abs(coeff[2]), use_offset=False)[0]))
+                        textright += '$\mu={0:1.3f}\;{1:s}$\n$\;\;\;\;\;\;({2:d} \; {3:s})$\n\n$\sigma={4:1.3f}\;{5:s}$\n$\;\;\;\;\;\;({6:d} \; {7:s})$'.format(
+                            abs(coeff[1]), 
+                            unit_raw,
+                            int(self._convert_to_e(abs(coeff[1]), use_offset=use_electron_offset)[0]), 
+                            unit_cal,
+                            abs(coeff[2]), 
+                            unit_raw,
+                            int(self._convert_to_e(abs(coeff[2]), use_offset=False)[0]),
+                            unit_cal)
                     else:
-                        textright += '$\mu={0:1.3f}\;V$\n$\sigma={1:1.3f}\;V$'.format(abs(coeff[1]), abs(coeff[2]))
+                        textright += '$\mu={0:1.3f}\;{1:s}$\n$\sigma={2:1.3f}\;{3:s}$'.format(
+                            abs(coeff[1]),
+                            unit_raw, 
+                            abs(coeff[2]),
+                            unit_raw)
                 else:
                     if electron_axis:
-                        textright += '$\mu={0:1.3f}\;V\n$\;\;\;\;\;\;({3:d} \; e^-)$\n\n$\sigma={2:0.3f}\;V\n$\;\;\;\;\;\;({3:d} \; e^-)$'.format(
-                            abs(coeff[1]), int(self._convert_to_e(abs(coeff[1]), use_offset=use_electron_offset)[0]), abs(coeff[2]), int(self._convert_to_e(abs(coeff[2]), use_offset=False)[0]))
+                        textright += '$\mu={0:1.3f}\;{1:s}$\n$\;\;\;\;\;\;({2:d} \; {3:s})$\n\n$\sigma={4:1.3f}\;{5:s}$\n$\;\;\;\;\;\;({6:d} \; {7:s})$'.format(
+                            abs(coeff[1]), 
+                            unit_raw,
+                            int(self._convert_to_e(abs(coeff[1]), use_offset=use_electron_offset)[0]), 
+                            unit_cal,
+                            abs(coeff[2]), 
+                            unit_raw,
+                            int(self._convert_to_e(abs(coeff[2]), use_offset=False)[0]),
+                            unit_cal)
                     else:
-                        textright += '$\mu={0:1.3f}\;V$\n$\sigma={1:0.3f}\;V$'.format(abs(coeff[1]), abs(coeff[2]))
+                        textright += '$\mu={0:1.3f}\;{1:s}$\n$\sigma={2:1.3f}\;{3:s}$'.format(
+                            abs(coeff[1]), 
+                            unit_raw,
+                            abs(coeff[2]),
+                            unit_raw)
                 if print_failed_fits:
                     textright += '\n\nFailed fits: {0}'.format(self.n_failed_scurves)
+
+            textright += '\n\nTotal counts:\n{0}'.format(total_counts)
 
             props = dict(boxstyle='round', facecolor='gray', alpha=0.3)
             ax.text(0.80, 0.96, textright, transform=ax.transAxes, fontsize=8, verticalalignment='top', bbox=props)
@@ -666,8 +782,9 @@ class Plotting(object):
         # start_row = self.run_config['start_row']
         # stop_row = self.run_config['stop_row']
         #x_bins = np.arange(-0.5, max(scan_parameters) + 1.5, scan_parameters[1]-scan_parameters[0])
+        print(scan_parameters)
         x_step=scan_parameters[1]-scan_parameters[0]
-        x_bins = np.arange(-0.5*x_step, max(scan_parameters) + 1.5*x_step, x_step)
+        x_bins = np.arange(min(scan_parameters)-0.5*x_step, max(scan_parameters) + 0.5*x_step, x_step)
         if max_occ is None:
             max_occ=int(np.max(scurves))
         y_max=int(max_occ*1.10)
@@ -705,7 +822,7 @@ class Plotting(object):
             bounds = np.linspace(start=1.0, stop=z_max, num=255, endpoint=True)
             norm = colors.LogNorm()
 
-        im = ax.pcolormesh(x_bins, y_bins, hist.T, norm=norm, rasterized=True)
+        im = ax.pcolormesh(x_bins, y_bins, hist.T, norm=norm, rasterized=True, shading='auto')
 
         if z_max <= 10.0:
             cb = fig.colorbar(im, ticks=np.linspace(start=0.0, stop=z_max, num=min(
@@ -726,12 +843,59 @@ class Plotting(object):
 
         self._save_plots(fig, suffix='scurves')
 
+    def table_values(self,dat,n_row=30,n_col=3,
+                        title="Chip configuration"):
+        keys=dat.keys()
+        cellText=[["" for i in range(n_col*2)] for j in range(n_row)]
+        for i,k in enumerate(keys):
+            str_k_val = ""
+            if isinstance(dat[k], float):
+                str_k_val="{:.4f}".format(dat[k])
+            elif isinstance(dat[k], str):
+                # If the parameter value is a string, check if it is binary and convert it to int.
+                binary_set = {'0','1'}
+                string_set = set(dat[k])    
+                if binary_set == string_set or string_set == {'0'} or string_set == {'1'}:
+                    str_k_val=int(dat[k],2)
+                else:
+                    str_k_val=dat[k]
+            else:
+                str_k_val=int(dat[k])
+            cellText[i%n_row][int(i/n_row)*2]=k
+            cellText[i%n_row][(int(i/n_row)*2)+1]=str_k_val
+        colLabels=[]
+        colWidths=[]
+        for i in range(n_col):
+            colLabels.append("Parameter")
+            colWidths.append(0.2) ## width for param name
+            colLabels.append("Value")
+            colWidths.append(0.15) ## width for value
+        fig = Figure()
+        FigureCanvas(fig)
+        ax = fig.add_subplot(111)
+        fig.patch.set_visible(False)
+        ax.set_adjustable('box')
+        ax.axis('off')
+        ax.axis('tight')
+
+        tab=ax.table(cellText=cellText,
+                colLabels=colLabels,
+                colWidths = colWidths,
+                loc='upper center')
+        tab.auto_set_font_size(False)
+        tab.set_fontsize(4)
+        for key, cell in tab.get_celld().items():
+            cell.set_linewidth(0.1)
+        if title is not None and len(title)>0:
+            ax.set_title(title, color=TITLE_COLOR)
+        tab.scale(1,0.7)
+        self._save_plots(fig, suffix='values')
+
     def _save_plots(self, fig, suffix=None, tight=False):
         increase_count = False
         bbox_inches = 'tight' if tight else ''
         if suffix is None:
             suffix = str(self.plot_cnt)
-
         if not self.out_file:
             fig.show()
         else:
@@ -775,7 +939,6 @@ class Plotting(object):
         ax2.xaxis.set_major_locator(matplotlib.ticker.FixedLocator(ticks))
         ax2.set_xticklabels(xticks)
         ax2.set_xlabel('Charge [e-]', labelpad=7)
-
         return ax2
 
     def _gauss(self, x, *p):
