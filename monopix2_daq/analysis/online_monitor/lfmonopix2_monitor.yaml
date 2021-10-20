@@ -1,0 +1,17 @@
+# producer_sim : # not yet implemented
+#     MIO3 :
+#         kind : mio3_sim
+#         backend : tcp://127.0.0.1:6500
+
+converter :
+    lfmonopix2 :
+        kind : lfmonopix2_inter
+        frontend : tcp://127.0.0.1:6500
+        backend : tcp://127.0.0.1:6600
+        # analyze_tdc: False # Option to enable TDC interpretation, not yet needed
+        # noisy_threshold : 3
+
+receiver :
+    lfmonopix2 :
+        kind : lfmonopix2_recv
+        frontend : tcp://127.0.0.1:6600
