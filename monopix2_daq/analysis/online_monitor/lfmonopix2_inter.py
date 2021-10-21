@@ -19,7 +19,7 @@ hit_dtype = [
 ]
 
 
-#@njit(cache=True)
+# @njit(cache=True)
 def hist_occupancy(occ, tot, hits):
     for hit_i in range(hits.shape[0]):
         if hits[hit_i]["col"] < occ.shape[0] and hits[hit_i]["row"] < occ.shape[1]:
@@ -100,7 +100,7 @@ class LFMonopix2(Transceiver):
              'hps': self.hps,
              'total_hits': self.total_hits})
         return meta_data
-    
+
     def interpret_data(self, data):
         ''' Called for every chunk received '''
         raw_data, meta_data = data[0][1]
@@ -108,7 +108,7 @@ class LFMonopix2(Transceiver):
 
         # hit_buffer = np.zeros(4 * len(raw_data), dtype=au.hit_dtype)
         hit_buffer = np.zeros(shape=self.chunk_size, dtype=hit_dtype)
-        hits = self.interpreter.interpret(raw_data, None, hit_buffer) # No meta_data needed for online_monitor
+        hits = self.interpreter.interpret(raw_data, None, hit_buffer)  # No meta_data needed for online_monitor
 
         self.hits_last_readout = len(hits)
         self.total_hits += len(hits)
@@ -122,7 +122,7 @@ class LFMonopix2(Transceiver):
             occupancy_hist[sel] = 0
 
         # Select individual pixel for ToT plotting
-        if self.pix_col == None or self.pix_row == None:
+        if self.pix_col is None or self.pix_row is None:
             tot_hist = self.hist_tot.sum(axis=(0, 1))
         else:
             tot_hist = self.hist_tot[int(self.pix_col), int(self.pix_row), :]
@@ -130,7 +130,7 @@ class LFMonopix2(Transceiver):
         interpreted_data = {
             'meta_data': meta_data,
             'occupancy': occupancy_hist,
-            'tot_hist': tot_hist, # self.hist_tot.sum(axis=(0, 1)),
+            'tot_hist': tot_hist,  # self.hist_tot.sum(axis=(0, 1)),
         }
 
         if self.int_readouts != 0:  # = 0 for infinite integration
