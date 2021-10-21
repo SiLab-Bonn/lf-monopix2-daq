@@ -37,8 +37,8 @@ class LFMonopix2(Receiver):
         dock_tot = Dock("Time over threshold values (TOT)", size=(400, 400))
         # dock_tdc = Dock("TDC", size=(400, 400)) # no need for TDC so far
         dock_status = Dock("Status", size=(800, 40))
-        dock_area.addDock(dock_occcupancy, 'top')
-        dock_area.addDock(dock_tot, 'bottom', dock_occcupancy)
+        dock_area.addDock(dock_occcupancy, 'left')
+        dock_area.addDock(dock_tot, 'right', dock_occcupancy)
         # dock_area.addDock(dock_tdc, 'right', dock_tot)
         dock_area.addDock(dock_status, 'top')
 
@@ -67,6 +67,9 @@ class LFMonopix2(Receiver):
         self.row.setValue(-1)
         self.reset_button = QtGui.QPushButton('Reset')
         self.noisy_checkbox = QtGui.QCheckBox('Mask noisy pixels')
+        self.occ_invertY = QtGui.QCheckBox('invertY')
+        self.occ_invertY.setCheckState(2)
+        self.occ_invertX = QtGui.QCheckBox('invertX')
         layout.addWidget(self.timestamp_label, 0, 0, 0, 1)
         layout.addWidget(self.plot_delay_label, 0, 1, 0, 1)
         layout.addWidget(self.rate_label, 0, 2, 0, 1)
@@ -76,7 +79,9 @@ class LFMonopix2(Receiver):
         layout.addWidget(self.noisy_checkbox, 0, 7, 0, 1)
         layout.addWidget(self.col, 0, 8, 0, 1)
         layout.addWidget(self.row, 0, 9, 0, 1)
-        layout.addWidget(self.reset_button, 0, 10, 0, 1)
+        layout.addWidget(self.occ_invertX, 0, 10, 0, 1)
+        layout.addWidget(self.occ_invertY, 0, 11, 0, 1)
+        layout.addWidget(self.reset_button, 0, 12, 0, 1)
         dock_status.addWidget(cw)
 
         # Connect widgets
@@ -97,12 +102,12 @@ class LFMonopix2(Receiver):
 
         self.occupancy_img.setLookupTable(lut, update=True)
         # view.addItem(self.occupancy_img)
-        plot = pg.PlotWidget(viewBox=view, labels={'bottom': 'Column', 'left': 'Row'})
-        plot.addItem(self.occupancy_img)
+        self.plot = pg.PlotWidget(viewBox=view, labels={'bottom': 'Column', 'left': 'Row'})
+        self.plot.addItem(self.occupancy_img)
 
-        dock_occcupancy.addWidget(plot)
+        dock_occcupancy.addWidget(self.plot)
 
-        tot_plot_widget = pg.PlotWidget(background="w")
+        tot_plot_widget = pg.PlotWidget(background="w", labels={'bottom': 'ToT', 'left': '#hits'})
         self.tot_plot = tot_plot_widget.plot(np.linspace(-0.5, 15.5, 17),
                                              np.zeros((16)), stepMode=True)
         tot_plot_widget.showGrid(y=True)
@@ -126,6 +131,18 @@ class LFMonopix2(Receiver):
         else:
             self.hit_rate_label.setText("Hit Rate\n%d Hz" % int(hps))
 
+    def _update_inverted_axis(self):
+        '''Inverts occupancy map x or y axis if box is checked'''
+        if self.occ_invertX.checkState() == 0:
+            self.plot.getViewBox().invertX(False)
+        else:
+            self.plot.getViewBox().invertX(True)
+
+        if self.occ_invertY.checkState() == 0:
+            self.plot.getViewBox().invertY(False)
+        else:
+            self.plot.getViewBox().invertY(True)
+
     def handle_data(self, data):
         # Histogram data
         self.occupancy_img.setImage(data['occupancy'][:, :],
@@ -142,6 +159,7 @@ class LFMonopix2(Receiver):
         self._update_rate(data['meta_data']['fps'],
                           data['meta_data']['hps'],
                           data['meta_data']['total_hits'])
+        self._update_inverted_axis()
         self.timestamp_label.setText("Data Timestamp\n%s" % time.asctime(time.localtime(data['meta_data']['timestamp_stop'])))
         self.scan_parameter_label.setText("Parameter ID\n%d" % data['meta_data']['scan_par_id'])
         now = ptime.time()
