@@ -17,17 +17,17 @@ from monopix2_daq.analysis import plotting
 local_configuration={
                      "with_mon": True,                      # Enable Mon/Hit-Or timestamping (640 MHz) in data 
                      "inj_lo": 0.2,                         # Fixed value on LF-Monopix2 board for VLo
-                     "injlist_param": [0,0.45,0.005],       # List of injection values to scan [start,end,step]
+                     "injlist_param": [0.0,0.7,0.005],       # List of injection values to scan [start,end,step]
                      "thlist": None,                        # List of global threshold values [TH1,TH2,TH3]
                      "phaselist_param": None,               # List of phases
-                     "n_mask_pix":85,                       # Maximum number of enabled pixels on every injection/TH step
+                     "n_mask_pix": 170,                       # Maximum number of enabled pixels on every injection/TH step
                      "disable_noninjected_pixel": True,     # A flag to determine if non-injected pixels are disabled while injecting
                      "mask_step": None,                     # Number of pixels between injected pixels in the same column (overwrites n_mask_pix if not None)
                      "inj_n_param": 100,                    # Number of injection pulses per pixel and step
                      "with_calibration": True,              # Determine if calibration is used in the output plots
                      "c_inj": 2.76e-15,                     # Injection capacitance value in F
                      "trim_mask": None,                     # TRIM mask
-                     "trim_limit": False,                   # TRIM limit (True: High, False: Lowest, "unbiased": Unbiased)
+                     "trim_limit": None,                   # TRIM limit (True: High, False: Lowest, "unbiased": Unbiased)
                      "pix":[18,25]                          # Single or list of Enabled pixels
 
 }
@@ -62,6 +62,28 @@ class ScanThreshold(scan_base.ScanBase):
 
         # Enable pixels.
         self.monopix.set_preamp_en(pix)
+
+        # Set the corresponding TRIM DAC mask.
+        if trim_mask is None:
+            if trim_limit is not None and isinstance(trim_limit, bool):
+                tdac_mask = self.monopix.default_TDAC_mask(limit=trim_limit)
+                self.monopix.set_tdac(tdac_mask)
+            elif trim_limit is not None and trim_limit=="unbiased":
+                tdac_mask = self.monopix.default_TDAC_mask(unbiased=True)
+                self.monopix.set_tdac(tdac_mask)
+            else:
+                pass
+        else:
+            if isinstance(trim_mask, int):
+                self.monopix.set_tdac(trim_mask)
+            elif trim_mask=="middle":
+                tdac_mask=np.full((self.monopix.chip_props["COL_SIZE"],self.monopix.chip_props["ROW_SIZE"]), 0, dtype=int)
+                for col in list(range(0,56)):
+                    tdac_mask[col,0:self.monopix.chip_props["ROW_SIZE"]:1] = 7
+                    tdac_mask[col,0:self.monopix.chip_props["ROW_SIZE"]:2] = 8
+                self.monopix.set_tdac(tdac_mask)
+            else:
+                self.logger.info('Not a valid DAC setting') 
 
         # Enable timestamps.
         if with_tlu:
@@ -118,28 +140,6 @@ class ScanThreshold(scan_base.ScanBase):
         mask_n=len(list_of_masks)
         n_mask_pix=int(math.ceil(self.monopix.chip_props["ROW_SIZE"]/(mask_step*1.0)) * len(np.unique([coln[0] for coln in pix], axis=0)) )
 
-        # Set the corresponding TRIM DAC mask.
-        if trim_mask is None:
-            if trim_limit is not None and isinstance(trim_limit, bool):
-                tdac_mask = self.monopix.default_TDAC_mask(limit=trim_limit)
-                self.monopix.set_tdac(tdac_mask)
-            elif trim_limit is not None and trim_limit=="unbiased":
-                tdac_mask = self.monopix.default_TDAC_mask(unbiased=True)
-                self.monopix.set_tdac(tdac_mask)
-            else:
-                pass
-        else:
-            if isinstance(trim_mask, int):
-                self.monopix.set_tdac(trim_mask)
-            elif trim_mask=="middle":
-                tdac_mask=np.full((self.monopix.chip_props["COL_SIZE"],self.monopix.chip_props["ROW_SIZE"]), 0, dtype=int)
-                for col in list(range(0,56)):
-                    tdac_mask[col,0:self.monopix.chip_props["ROW_SIZE"]:1] = 7
-                    tdac_mask[col,0:self.monopix.chip_props["ROW_SIZE"]:2] = 8
-                self.monopix.set_tdac(tdac_mask)
-            else:
-                self.logger.info('Not a valid DAC setting')
-
         # Initialize the scan parameter ID counter.
         scan_param_id=0
 
@@ -152,6 +152,9 @@ class ScanThreshold(scan_base.ScanBase):
             th_str_tmp="TH{0}".format(str(i+1))
             if thlist[i]>0 and self.monopix.SET_VALUE[th_str_tmp]!=thlist[i]:
                 self.monopix.set_th(th_id = i+1, th_value = thlist[i])
+
+        # Start Read-out.
+        self.monopix.set_monoread()
 
         # Scan over injection steps and record the corresponding hits.
         for inj, phase in inj_th_phase.tolist():
@@ -171,11 +174,9 @@ class ScanThreshold(scan_base.ScanBase):
                 self.monopix.set_inj_all(inj_high=inj_high, inj_n=inj_n_param, ext_trigger=False)
 
             cnt=0
-            # Start Read-out.
-            self.monopix.set_monoread()
-            
             # Go through the masks.
             for mask_i in range(mask_n):
+                self.monopix.set_preamp_en("none")
                 self.logger.info('Injecting: Mask {0}, from {1:.3f} to {2:.3f} V'.format(scan_param_id,injlist[0], injlist[-1]))
                 # Choose the current mask, and enable the corresponding pixels.
                 mask_pix=[]
@@ -187,12 +188,11 @@ class ScanThreshold(scan_base.ScanBase):
                 if disable_noninjected_pixel:
                     self.monopix.set_preamp_en(mask_pix)
                 if with_mon:
-                    self.monopix.set_mon_en(mask_pix)
-                mask_pix_tmp=mask_pix
-                for i in range(n_mask_pix-len(mask_pix)):
-                    mask_pix_tmp.append([-1,-1])
+                    self.monopix.set_mon_en(mask_pix[0])
+                #mask_pix_tmp=mask_pix
+                #for i in range(n_mask_pix-len(mask_pix)):
+                #    mask_pix_tmp.append([-1,-1])
                 # Reset and clear trash hits before injecting.
-                time.sleep(0.01)
                 for _ in range(10):
                     self.monopix["fifo"]["RESET"] 
                     time.sleep(0.002)
@@ -208,8 +208,8 @@ class ScanThreshold(scan_base.ScanBase):
             scan_param_id=scan_param_id+1
 
             # Stop read-out.
-            self.monopix.stop_monoread()  
-            time.sleep(0.1)
+            #self.monopix.stop_monoread()  
+            #time.sleep(0.1)
             pre_cnt=cnt
             cnt=self.fifo_readout.get_record_count()
 
@@ -243,6 +243,7 @@ class ScanThreshold(scan_base.ScanBase):
             p.create_threshold_plot(scan_parameter_name = "Injection [V]", electron_axis=with_calibration)
             p.create_noise_plot(scan_parameter_name = "Injection [V]", electron_axis=with_calibration)
             p.create_pixel_conf_maps()
+            #p.create_single_scurves(scan_parameter_name="Injection [V]", electron_axis = with_calibration)
 
 if __name__ == "__main__":
     from monopix2_daq import monopix2

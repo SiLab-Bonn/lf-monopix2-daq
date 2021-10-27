@@ -191,16 +191,33 @@ class Plotting(object):
                 scan_parameter_name = 'Injection [V]'
                 electron_axis = electron_axis
 
-            self._plot_scurves(scurves=self.HistSCurve[:,:,:],
-                                scan_parameters=np.arange(self.scan_kwargs["injlist_param"][0],
-                                                self.scan_kwargs["injlist_param"][1],
-                                                self.scan_kwargs["injlist_param"][2]),
-                                electron_axis=electron_axis,
-                                scan_parameter_name=scan_parameter_name,
-                                max_occ=self.scan_kwargs["inj_n_param"],
-                                title="S-Curves")
+                self._plot_scurves(scurves=self.HistSCurve[:,:,:],
+                                    scan_parameters=np.arange(self.scan_kwargs["injlist_param"][0],
+                                                    self.scan_kwargs["injlist_param"][1],
+                                                    self.scan_kwargs["injlist_param"][2]),
+                                    electron_axis=electron_axis,
+                                    scan_parameter_name=scan_parameter_name,
+                                    max_occ=self.scan_kwargs["inj_n_param"],
+                                    title="S-Curves")
         except Exception:
             self.logger.error('Could not create scurve plot!')
+
+    def create_single_scurves(self, scan_parameter_name='Scan parameter', electron_axis = False, max_occ=None):
+        try:
+            if self.run_config['scan_id'] == 'scan_threshold':
+                scan_parameter_name = 'Injection [V]'
+                electron_axis = electron_axis
+
+                self._plot_single_scurves(scurves=self.HistSCurve[:,:,:],
+                                    scan_parameters=np.arange(self.scan_kwargs["injlist_param"][0],
+                                                    self.scan_kwargs["injlist_param"][1],
+                                                    self.scan_kwargs["injlist_param"][2]),
+                                    electron_axis=electron_axis,
+                                    scan_parameter_name=scan_parameter_name,
+                                    max_occ=self.scan_kwargs["inj_n_param"],
+                                    title="S-Curves")
+        except Exception:
+            self.logger.error('Could not create single scurve plot!')
 
     def create_threshold_plot(self, logscale=False, scan_parameter_name='Scan parameter', electron_axis=False):
         try:
@@ -307,24 +324,24 @@ class Plotting(object):
             cnt=0
             for i in np.ravel(self.Trim[self.Trim[:]== 8]):
                 cnt+=1
-            print ("Counts in trim", str(cnt))
+            #print ("Counts in trim", str(cnt))
 
             cnt=0
             for i in np.ravel(self.Trim[self.EnPre[:]== 1]):
                 cnt+=1
-            print ("Counts in preamp", str(cnt))
+            #print ("Counts in preamp", str(cnt))
 
             sel = np.logical_and(self.EnPre[:] == 1, self.Trim[:] < 17)  
             mask[~sel] = True
             cnt=0
             for i in np.ravel(mask[mask[:]== False]):
                 cnt+=1
-            print ("Counts in mask", str(cnt))
+            #print ("Counts in mask", str(cnt))
 
 
             data = np.ma.masked_array(self.Trim, mask)
             data_tdac = np.ravel(data[sel])
-            print (len(data_tdac))
+            #print (len(data_tdac))
 
             self._plot_distribution(data_tdac,
                                     plot_range=plot_range,
@@ -782,7 +799,6 @@ class Plotting(object):
         # start_row = self.run_config['start_row']
         # stop_row = self.run_config['stop_row']
         #x_bins = np.arange(-0.5, max(scan_parameters) + 1.5, scan_parameters[1]-scan_parameters[0])
-        print(scan_parameters)
         x_step=scan_parameters[1]-scan_parameters[0]
         x_bins = np.arange(min(scan_parameters)-0.5*x_step, max(scan_parameters) + 0.5*x_step, x_step)
         if max_occ is None:
@@ -842,6 +858,38 @@ class Plotting(object):
             self._add_electron_axis(fig, ax)
 
         self._save_plots(fig, suffix='scurves')
+
+    def _plot_single_scurves(self, scurves, scan_parameters, electron_axis=False, max_occ=None, scan_parameter_name=None, title='S-curves', ylabel='Hits'):
+        
+        x_step=scan_parameters[1]-scan_parameters[0]
+        if max_occ is None:
+            max_occ=int(np.max(scurves))
+        y_max=int(max_occ*1.10)
+
+        param_count = scurves.shape[2]
+
+        # Reformat scurves array as one long list of scurves
+        # For very noisy or not properly masked devices, ignore all s-curves where any data
+        # is larger than given threshold (max_occ)
+        for p_i,p in enumerate(np.argwhere(self.EnPre)):
+            fig = Figure()
+            FigureCanvas(fig)
+            ax = fig.add_subplot(111)
+
+            if scan_parameter_name is None:
+                ax.set_xlabel('Scan parameter')
+            else:
+                ax.set_xlabel(scan_parameter_name)
+            ax.set_ylabel(ylabel)
+            
+            ax.set_title("Pixel [%d,%d], Mean=%.3f, Sigma=%.3f"%(p[0],p[1], self.ThresholdMap[p[0],p[1]], self.NoiseMap[p[0],p[1]]), color=TITLE_COLOR)
+            
+            ax.plot(scan_parameters, scurves[p[0],p[1]], "o")
+
+            if electron_axis:
+                self._add_electron_axis(fig, ax)
+
+            self._save_plots(fig, suffix='scurves') 
 
     def table_values(self,dat,n_row=30,n_col=3,
                         title="Chip configuration"):

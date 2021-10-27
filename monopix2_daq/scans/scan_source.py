@@ -110,7 +110,7 @@ if __name__ == "__main__":
     
     parser = argparse.ArgumentParser(usage="python scan_source.py -t1 0.8 -t2 0.8 -t3 0.8 -f 0:44 -p -time 50",
              formatter_class=argparse.RawTextHelpFormatter)
-    parser.add_argument("-config", "--config_file", type=str, default=None)
+    parser.add_argument("-conf", "--config_file", type=str, default=None)
     parser.add_argument('-t1',"--th1", type=float, default=None)
     parser.add_argument('-t2',"--th2", type=float, default=None)
     parser.add_argument('-t3',"--th3", type=float, default=None)
@@ -179,4 +179,4 @@ if __name__ == "__main__":
     
     scan.start(**local_configuration)
     scan.analyze()
-    scan.plot(**local_configuration)
+    scan.plot()

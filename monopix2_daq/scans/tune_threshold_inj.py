@@ -18,10 +18,10 @@ from monopix2_daq.analysis import plotting
 local_configuration={
                      "with_mon": False,                     # Enable Mon/Hit-Or timestamping (640 MHz) in data 
                      "inj_lo": 0.2,                         # Fixed value on LF-Monopix2 board for VLo
-                     "inj_target": 0.226,                    # List of injection values to scan [start,end,step]
+                     "inj_target": 0.258,                    # List of injection values to scan [start,end,step]
                      "thlist": None,                        # List of global threshold values [TH1,TH2,TH3]
                      "phaselist_param": None,               # List of phases
-                     "n_mask_pix":85,                       # Maximum number of enabled pixels on every injection/TH step
+                     "n_mask_pix":170,                       # Maximum number of enabled pixels on every injection/TH step
                      "disable_noninjected_pixel": True,     # A flag to determine if non-injected pixels are disabled while injecting
                      "mask_step": None,                     # Number of pixels between injected pixels in the same column (overwrites n_mask_pix if not None)
                      "inj_n_param": 100,                    # Number of injection pulses per pixel and step
@@ -149,7 +149,8 @@ class TuneTHinj(scan_base.ScanBase):
                 trim_increase_sign[col,0:self.monopix.chip_props["ROW_SIZE"]] = 1
             elif col in self.monopix.chip_props["COLS_TUNING_BI"]:
                 trim_increase_sign[col,0:self.monopix.chip_props["ROW_SIZE"]] = -1
-        
+        self.monopix.set_tdac(trim_ref)
+
         # Run the tuning logic with binary search. 
         cnt=0
         for scan_param_id, t_step in enumerate(tune_steps):
@@ -216,18 +217,20 @@ class TuneTHinj(scan_base.ScanBase):
             trim_ref[trim_ref>15]=15
             trim_ref[trim_ref<0]=0
 
-            # for p in np.argwhere(en_ref == 1):
-            #     if p in arg:
-            #         if p[0] in self.monopix.chip_props["COLS_TUNING_UNI"]:
-            #             trim_ref[p[0],p[1]] = min(trim_ref[p[0],p[1]]+1,15)
-            #         elif p[0] in self.monopix.chip_props["COLS_TUNING_BI"]:
-            #             trim_ref[p[0],p[1]] = max(trim_ref[p[0],p[1]]-1,0)
-            #         #en_ref[p[0],p[1]] = 0
-            #     else:
-            #         if p[0] in self.monopix.chip_props["COLS_TUNING_UNI"]:
-            #             trim_ref[p[0],p[1]] = max(trim_ref[p[0],p[1]]-1,0)
-            #         elif p[0] in self.monopix.chip_props["COLS_TUNING_BI"]:
-            #             trim_ref[p[0],p[1]] = min(trim_ref[p[0],p[1]]+1,15)
+            """             
+            for p in np.argwhere(en_ref == 1):
+                if p in arg:
+                    if p[0] in self.monopix.chip_props["COLS_TUNING_UNI"]:
+                        trim_ref[p[0],p[1]] = min(trim_ref[p[0],p[1]]+1,15)
+                    elif p[0] in self.monopix.chip_props["COLS_TUNING_BI"]:
+                        trim_ref[p[0],p[1]] = max(trim_ref[p[0],p[1]]-1,0)
+                    #en_ref[p[0],p[1]] = 0
+                else:
+                    if p[0] in self.monopix.chip_props["COLS_TUNING_UNI"]:
+                        trim_ref[p[0],p[1]] = max(trim_ref[p[0],p[1]]-1,0)
+                    elif p[0] in self.monopix.chip_props["COLS_TUNING_BI"]:
+                        trim_ref[p[0],p[1]] = min(trim_ref[p[0],p[1]]+1,15) 
+            """
 
             pre_cnt=cnt
             self.logger.info('mask=%d pix=%s data=%d'%(mask_i,str(mask_pix),cnt-pre_cnt))

@@ -86,7 +86,7 @@ class Monopix2(Dut):
         #TODO: Check if these lists can replace "SET_VALUE" as independent dictionaries, to avoid double configuration confusions.
         self.PWR_CONF=['VPC', 'VDD_EOC', 'VDDD', 'VDDA']
         self.VLT_CONF=['BL', 'TH1', 'TH2', 'TH3']
-        self.CRR_CONF=['NTC', 'Idac_TDAC_LSB', 'Iref']
+        self.CRR_CONF=['Iref', 'NTC', 'Idac_TDAC_LSB']
         self.REG_CONF={}
         for field in self["CONF_SR"]._conf['fields']:
             self.REG_CONF[field['name']]=self["CONF_SR"][field['name']]
@@ -156,7 +156,7 @@ class Monopix2(Dut):
     def power_on(self, 
                 VPC=1.8, VDD_EOC=1.8, VDDD=1.8, VDDA=1.8, #POWER SOURCES (VDD_EOC and VDD_IO are powered together)
                 BL=0.75, TH1=1.5, TH2=1.5, TH3=1.5, #VOLTAGE SOURCES (Depending on the jumper configuration TH2 and TH3 can be used for VCasc1 or VCasc2)
-                NTC=5, Idac_TDAC_LSB=0, Iref=-8, # CURRENT SOURCES
+                Iref=-8, NTC=5, Idac_TDAC_LSB=0, # CURRENT SOURCES
                 VHi= 0.2): #A value for the voltages of the GPAC injection line. INJ_HI must be the same as INJ_LO, and both igual to the expected VHi on the chip.
         """
         Powers on the chip. 
@@ -219,12 +219,12 @@ class Monopix2(Dut):
         self.SET_VALUE['TH3']=TH3
         
         # CURRENT SOURCES         
+        self['Iref'].set_current(Iref, unit='uA')
+        self.SET_VALUE['Iref']=Iref
         self["NTC"].set_current(NTC,unit="uA")
         self.SET_VALUE['NTC']=NTC
         self['Idac_TDAC_LSB'].set_current(Idac_TDAC_LSB, unit='uA')
         self.SET_VALUE['Idac_TDAC_LSB']=Idac_TDAC_LSB
-        self['Iref'].set_current(Iref, unit='uA')
-        self.SET_VALUE['Iref']=Iref
 
         # GPAC ANALOG INJECTION (Both values have to be equal to the expected VHi for the digital injection)
         self['INJ_HI'].set_voltage(VHi, unit='V')
@@ -345,8 +345,8 @@ class Monopix2(Dut):
         """
         pw_status = {}       
         for pwr_id in ['VPC', 'VDD_EOC', 'VDDD', 'VDDA', 
-                    'BL', 'TH1', 'TH2', 'TH3', 'NTC',
-                    'Idac_TDAC_LSB', 'Iref']:
+                    'BL', 'TH1', 'TH2', 'TH3', 'Iref', 
+                    'NTC', 'Idac_TDAC_LSB']:
             pw_status[pwr_id+'[V]'] =  self[pwr_id].get_voltage(unit='V')
             pw_status[pwr_id+'[mA]'] = self[pwr_id].get_current(unit='mA')
             pw_status[pwr_id+"_set"] = self.SET_VALUE[pwr_id]
@@ -461,7 +461,7 @@ class Monopix2(Dut):
         self.logger.info("VHi set to {0:.4f} V".format(VHi))
 
     def set_inj_all(self, inj_high=0.6,
-                    inj_n=100, inj_width=3000, inj_delay=8000, 
+                    inj_n=100, inj_width=8000, inj_delay=8000, 
                     inj_phase=-1, ext_trigger=False):
         """
         Sets the global parameters for injection pulses.
@@ -767,7 +767,7 @@ class Monopix2(Dut):
             self.logger.info("You have not specified a valid input for mask creation. Please check the code documentation.")
         return mask
 
-    def set_preamp_en(self, pix="all", EnColRO="auto", Out='autoCMOS'):
+    def set_preamp_en(self, pix="all", EnColRO="auto", Out='autoCMOS', overwrite=False):
         #TODO: Check after write_pixel_mask
         mask = self._create_mask(pix)
         if EnColRO == "auto":
@@ -801,7 +801,7 @@ class Monopix2(Dut):
             elif ('auto' not in Out):
                 self['CONF_SR']['EnDataLVDS'] = 1
 
-        self._write_pixel_mask(bit="EnPre", mask=mask)
+        self._write_pixel_mask(bit="EnPre", mask=mask, overwrite=overwrite)
         
         """
         self['CONF']['Rst'] = 1
@@ -860,7 +860,7 @@ class Monopix2(Dut):
         arg = np.argwhere(self.PIXEL_CONF["EnInj"][:,:])
         self.logger.info("Enabling Injection for {0:d} pixels: {1:s}".format(len(arg), str(arg).replace("\n", " ")))
         
-    def set_tdac(self, tdac):
+    def set_tdac(self, tdac, overwrite=False):
         #TODO: Maybe better to make this function write all the bit masks only after all four have been changed, and not one by one. 
         """
         Writes the 4-bit mask of trim values to the whole pixel matrix.
@@ -887,7 +887,7 @@ class Monopix2(Dut):
         # Write the mask for every trim bit.
         for bit in range(4):
             trim_bits_sel_mask = trim_bits_array[:, :, 7-bit]
-            self._write_pixel_mask(bit='Trim', mask=trim_bits_sel_mask, bit_pos=bit)
+            self._write_pixel_mask(bit='Trim', mask=trim_bits_sel_mask, bit_pos=bit, overwrite=overwrite)
 
     def get_conf_sr(self, mode='mwr'):
         #TODO: Check if this is properly implemented
@@ -1319,11 +1319,11 @@ class Monopix2(Dut):
                     pixel_conf_tmp=f.root.pixel_conf_before
                 for k in self.PIXEL_CONF.keys():
                     pixel_conf_ld[k] = pixel_conf_tmp[k][:]
-                self.set_tdac(np.array(pixel_conf_ld["Trim"],int).tolist())
-                self.set_mon_en(np.array(pixel_conf_ld["EnMonitor"],int).tolist())
-                self.set_inj_en(np.array(pixel_conf_ld["EnInj"],int).tolist())
+                self.set_tdac(np.array(pixel_conf_ld["Trim"],int).tolist(), overwrite=True)
+                self.set_mon_en(np.array(pixel_conf_ld["EnMonitor"],int).tolist(), overwrite=True)
+                self.set_inj_en(np.array(pixel_conf_ld["EnInj"],int).tolist(), overwrite=True)
                 self.set_preamp_en(np.array(pixel_conf_ld["EnPre"],int).tolist(),
-                            EnColRO=fmw_ld["CONF_SR"]["EnColRO"][:])
+                            EnColRO=fmw_ld["CONF_SR"]["EnColRO"][:], overwrite=True)
                 # Load chip column properties
                 try:
                     props_ld=yaml.full_load(f.root.meta_data.attrs.chip_props)
