@@ -356,6 +356,7 @@ class RawDataInterpreter(object):
                 # Prepare for next hit: Increase hit index and reset monopix_data_flag
                 hit_index += 1
                 self.monopix_data_flag = 0
+                self.monopix_token_timestamp = 0
 
             ########################################
             # TIMESTAMP 640 MHz (RX1), TAG: 0xFA   #
@@ -402,6 +403,7 @@ class RawDataInterpreter(object):
                 # Prepare for next data block. Increase hit index and reset rx_timestamp640 flag.
                 hit_index += 1
                 self.rx_timestamp640_flag = 0
+                self.rx_timestamp640 = 0
 
             ########################################
             # TIMESTAMP 640 MHz (INJ), TAG: 0xFC   #
@@ -448,6 +450,7 @@ class RawDataInterpreter(object):
                 # Prepare for next data block. Increase hit index and reset inj_timestamp640 flag.
                 hit_index += 1
                 self.inj_timestamp640_flag = 0
+                self.inj_timestamp640 = 0
 
             ############################################
             # TIMESTAMP 640 MHz (MON/HITOR), TAG: 0xFD #
@@ -497,6 +500,8 @@ class RawDataInterpreter(object):
                 # Prepare for next data block. Increase hit index and reset mon_timestamp640 flag.
                 hit_index += 1
                 self.mon_timestamp640_flag = 0
+                self.mon_timestamp640 = 0
+                self.mon_tot640 = 0
             
             # Get Timestamp of the Monitor Trailing Edge.
 
@@ -540,6 +545,8 @@ class RawDataInterpreter(object):
                 # Prepare for next data block. Increase hit index and reset mon_timestamp640 flag.
                 hit_index += 1
                 self.mon_timestamp640_flag = 0
+                self.mon_timestamp640 = 0
+                self.mon_tot640 = 0
 
             ########################################
             # TIMESTAMP 640 MHz (TLU), TAG: 0xFB   #
@@ -586,7 +593,8 @@ class RawDataInterpreter(object):
                 # Prepare for next data block. Increase hit index and reset tlu_timestamp640 flag.
                 hit_index += 1
                 self.tlu_timestamp640_flag = 0
-
+                self.tlu_timestamp640 = 0
+                
             ############
             # TLU DATA #
             ############
