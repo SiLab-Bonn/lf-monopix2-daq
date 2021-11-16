@@ -16,10 +16,11 @@ local_configuration={
                      "with_tlu": True,          # Enable TLU timestamping (40 & 640 MHz) in data
                      "with_inj": False,         # Enable Inj timestamping (640 MHz) in data 
                      "with_rx1": False,          # Enable RX1 timestamping (640 MHz) in data 
-                     "with_mon": False,         # Enable Mon/Hit-Or timestamping (640 MHz) in data 
+                     "with_mon": False,         # Enable Mon/Hit-Or timestamping (640 MHz) in data
+                     "monitor_pixel": None,  	# Pixel to be monitored. Format: [COL,ROW]
                      "scan_time": 10,           # Scan time (in seconds)
                      "tlu_delay": 8,            # Delay setting for the TLU (Default for standard cable length: 7 or 8)
-                     "pix": [28,25],            
+                     "pix": [28,25]             # Single or list of Enabled pixels            
 }
 
 class ScanSource(scan_base.ScanBase):
@@ -36,12 +37,20 @@ class ScanSource(scan_base.ScanBase):
         with_rx1 = kwargs.pop('with_rx1', False)
         with_mon = kwargs.pop('with_mon', True)
         scan_time = kwargs.pop('scan_time', 10)
+        monitor_pixel = kwargs.pop('monitor_pixel', None)
+        pix=kwargs.pop('pix',list(np.argwhere(self.monopix.PIXEL_CONF["EnPre"][:,:])))
 
         cnt=0
         scanned=0
 
         # Enable pixels.
         self.monopix.set_preamp_en(pix)
+
+        # Enable monitored pixel.
+        if monitor_pixel is not None:
+            self.monopix.set_mon_en(monitor_pixel)
+        else:
+            self.monopix.set_mon_en(pix[0])
 
         # Enable timestamps.
         if with_tlu:
