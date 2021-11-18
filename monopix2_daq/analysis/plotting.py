@@ -10,6 +10,7 @@ from scipy.optimize import curve_fit
 from matplotlib import colors, cm
 from matplotlib.backends.backend_pdf import PdfPages
 from matplotlib.figure import Figure
+from matplotlib.artist import setp
 from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 
@@ -101,6 +102,7 @@ class Plotting(object):
 
     def create_standard_plots(self):
         self.create_occupancy_map()
+        self.create_fancy_occupancy()
         self.create_pixel_conf_maps()
 
         if self.clustered:
@@ -133,6 +135,12 @@ class Plotting(object):
             self._plot_occupancy(hist=self.HistOcc[:].T, suffix='occupancy', title=title, z_max=np.ceil(1.1 * np.amax(self.HistOcc[:])))  # TODO: get mask and enable here
         except Exception:
             self.logger.error('Could not create occupancy map!')
+
+    def create_fancy_occupancy(self):
+        try:
+            self._plot_fancy_occupancy(hist=self.HistOcc[:].T)
+        except Exception:
+            self.log.error('Could not create fancy occupancy plot!')
 
     def create_pixel_conf_maps(self):
         try:
@@ -758,6 +766,85 @@ class Plotting(object):
 
 
         self._save_plots(fig, suffix=suffix, tight=True)
+
+    def _plot_fancy_occupancy(self, hist, title='Occupancy', z_label='#', z_min=None, z_max=None, log_z=True, norm_projection=False, show_sum=True, suffix='fancy_occupancy'):
+        if log_z:
+            title += '\n(logarithmic scale)'
+        title += '\nwith projections'
+
+        if z_min is None:
+            z_min = np.ma.min(hist)
+        if log_z and z_min == 0:
+            z_min = 0.1
+        if z_max is None:
+            z_max = np.ma.max(hist)
+
+        fig = Figure()
+        FigureCanvas(fig)
+        ax = fig.add_subplot(111)
+
+        self.plot_box_bounds = [0.5, COL_SIZE + 0.5, ROW_SIZE + 0.5, 0.5]
+        extent = self.plot_box_bounds
+        if log_z:
+            bounds = np.logspace(start=np.log10(z_min), stop=np.log10(z_max), num=255, endpoint=True)
+        else:
+            bounds = np.linspace(start=z_min, stop=z_max, num=int((z_max - z_min) + 1), endpoint=True)
+        cmap = copy.copy(cm.get_cmap('viridis'))
+        cmap.set_bad('w')
+        norm = colors.BoundaryNorm(bounds, cmap.N)
+
+        im = ax.imshow(hist, interpolation='none', aspect='auto', cmap=cmap, norm=norm, extent=extent)  # TODO: use pcolor or pcolormesh
+        ax.set_ylim((self.plot_box_bounds[2], self.plot_box_bounds[3]))
+        ax.set_xlim((self.plot_box_bounds[0], self.plot_box_bounds[1]))
+        ax.set_xlabel('Column')
+        ax.set_ylabel('Row')
+
+        # create new axes on the right and on the top of the current axes
+        # The first argument of the new_vertical(new_horizontal) method is
+        # the height (width) of the axes to be created in inches.
+        divider = make_axes_locatable(ax)
+        axHistx = divider.append_axes("top", 1.2, pad=0.2, sharex=ax)
+        axHisty = divider.append_axes("right", 1.2, pad=0.2, sharey=ax)
+
+        cax = divider.append_axes("right", size="5%", pad=0.1)
+        if log_z:
+            cb = fig.colorbar(im, cax=cax, ticks=np.logspace(start=np.log10(z_min), stop=np.log10(z_max), num=9, endpoint=True))
+        else:
+            cb = fig.colorbar(im, cax=cax, ticks=np.linspace(start=z_min, stop=z_max, num=int((z_max - z_min) + 1), endpoint=True))
+        cb.set_label(z_label)
+        # make some labels invisible
+        setp(axHistx.get_xticklabels() + axHisty.get_yticklabels(), visible=False)
+        if norm_projection:
+            hight = np.ma.mean(hist, axis=0)
+        else:
+            hight = np.ma.sum(hist, axis=0)
+
+        axHistx.bar(x=range(1, hist.shape[1] + 1), height=hight, align='center', linewidth=0)
+        axHistx.set_xlim((self.plot_box_bounds[0], self.plot_box_bounds[1]))
+        if hist.all() is np.ma.masked:
+            axHistx.set_ylim((0, 1))
+        axHistx.locator_params(axis='y', nbins=3)
+        axHistx.ticklabel_format(style='sci', scilimits=(0, 4), axis='y')
+        axHistx.set_ylabel(z_label)
+        if norm_projection:
+            width = np.ma.mean(hist, axis=1)
+        else:
+            width = np.ma.sum(hist, axis=1)
+
+        axHisty.barh(y=range(1, hist.shape[0] + 1), width=width, align='center', linewidth=0)
+        axHisty.set_ylim((self.plot_box_bounds[2], self.plot_box_bounds[3]))
+        if hist.all() is np.ma.masked:
+            axHisty.set_xlim((0, 1))
+        axHisty.locator_params(axis='x', nbins=3)
+        axHisty.ticklabel_format(style='sci', scilimits=(0, 4), axis='x')
+        axHisty.set_xlabel(z_label)
+
+        if not show_sum:
+            ax.set_title(title, color=TITLE_COLOR, x=1.35, y=1.2)
+        else:
+            ax.set_title(title + '\n($\\Sigma$ = {0})'.format((0 if hist.all() is np.ma.masked else np.ma.sum(hist))), color=TITLE_COLOR, x=1.35, y=1.2)
+
+        self._save_plots(fig, suffix=suffix)
 
     def _plot_2d_pixelmasks(self, hist, 
                         page_title="Pixel Masks", 
