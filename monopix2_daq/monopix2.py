@@ -461,7 +461,7 @@ class Monopix2(Dut):
         self.logger.info("VHi set to {0:.4f} V".format(VHi))
 
     def set_inj_all(self, inj_high=0.6,
-                    inj_n=100, inj_width=8000, inj_delay=8000, 
+                    inj_n=100, inj_width=15000, inj_delay=10000, 
                     inj_phase=-1, ext_trigger=False):
         """
         Sets the global parameters for injection pulses.

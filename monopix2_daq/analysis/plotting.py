@@ -310,7 +310,7 @@ class Plotting(object):
     def create_tdac_plot(self, logscale=False, scan_parameter_name='Scan parameter', electron_axis=False):
         try:
             title = 'TRIM distribution'
-            if self.run_config['scan_id'] in ['tune_threshold_inj', 'scan_threshold']:
+            if self.run_config['scan_id'] in ['tune_threshold_inj', 'tune_threshold_noise', 'scan_threshold']:
                 plot_range = np.arange(0,16,1)
             # elif self.run_config['scan_id'] == 'fast_threshold_scan':
             #     plot_range = np.array(self.scan_params[:]['vcal_high'] - self.scan_params[:]['vcal_med'], dtype=np.float)

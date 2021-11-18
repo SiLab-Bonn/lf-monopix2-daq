@@ -23,7 +23,7 @@ local_configuration={
                      "n_mask_pix": 170,                       # Maximum number of enabled pixels on every injection/TH step
                      "disable_noninjected_pixel": True,     # A flag to determine if non-injected pixels are disabled while injecting
                      "mask_step": None,                     # Number of pixels between injected pixels in the same column (overwrites n_mask_pix if not None)
-                     "inj_n_param": 100,                    # Number of injection pulses per pixel and step
+                     "inj_n_param": 170,                    # Number of injection pulses per pixel and step
                      "with_calibration": True,              # Determine if calibration is used in the output plots
                      "c_inj": 2.76e-15,                     # Injection capacitance value in F
                      "trim_mask": None,                     # TRIM mask
@@ -56,6 +56,7 @@ class ScanThreshold(scan_base.ScanBase):
         trim_mask = kwargs.pop('trim_mask', None)
         trim_limit = kwargs.pop('trim_limit', None)
         pix=kwargs.pop('pix',list(np.argwhere(self.monopix.PIXEL_CONF["EnPre"][:,:])))
+        debug_flag=False
 
         # Set a hard-coded limit on the maximum  number of pixels injected simultaneously.
         n_mask_pix_limit = 170
@@ -67,21 +68,21 @@ class ScanThreshold(scan_base.ScanBase):
         if trim_mask is None:
             if trim_limit is not None and isinstance(trim_limit, bool):
                 tdac_mask = self.monopix.default_TDAC_mask(limit=trim_limit)
-                self.monopix.set_tdac(tdac_mask)
+                self.monopix.set_tdac(tdac_mask, overwrite=True)
             elif trim_limit is not None and trim_limit=="unbiased":
                 tdac_mask = self.monopix.default_TDAC_mask(unbiased=True)
-                self.monopix.set_tdac(tdac_mask)
+                self.monopix.set_tdac(tdac_mask, overwrite=True)
             else:
                 pass
         else:
             if isinstance(trim_mask, int):
-                self.monopix.set_tdac(trim_mask)
+                self.monopix.set_tdac(trim_mask, overwrite=True)
             elif trim_mask=="middle":
                 tdac_mask=np.full((self.monopix.chip_props["COL_SIZE"],self.monopix.chip_props["ROW_SIZE"]), 0, dtype=int)
-                for col in list(range(0,56)):
+                for col in list(range(0,self.monopix.chip_props["COL_SIZE"])):
                     tdac_mask[col,0:self.monopix.chip_props["ROW_SIZE"]:1] = 7
                     tdac_mask[col,0:self.monopix.chip_props["ROW_SIZE"]:2] = 8
-                self.monopix.set_tdac(tdac_mask)
+                self.monopix.set_tdac(tdac_mask, overwrite=True)
             else:
                 self.logger.info('Not a valid DAC setting') 
 
@@ -202,7 +203,8 @@ class ScanThreshold(scan_base.ScanBase):
                     time.sleep(0.05)
                     pre_cnt=cnt
 
-            self.logger.info('mask=%d pix=%s data=%d'%(mask_i,str(mask_pix),cnt-pre_cnt))
+            if debug_flag:
+                self.logger.info('mask=%d pix=%s data=%d'%(mask_i,str(mask_pix),cnt-pre_cnt))
             
             # Increase scan parameter ID counter.
             scan_param_id=scan_param_id+1
@@ -302,8 +304,8 @@ if __name__ == "__main__":
                    pass
     else:
         pix=[]
-        m.set_preamp_en(m.PIXEL_CONF["EnPre"])
-        m.set_tdac(m.PIXEL_CONF["Trim"])
+        m.set_preamp_en(m.PIXEL_CONF["EnPre"], overwrite=True)
+        m.set_tdac(m.PIXEL_CONF["Trim"], overwrite=True)
         
         for i in range(0,m.chip_props["COL_SIZE"]):
            for j in range(0,m.chip_props["ROW_SIZE"]):

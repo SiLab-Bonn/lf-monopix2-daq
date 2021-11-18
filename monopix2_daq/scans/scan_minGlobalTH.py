@@ -53,21 +53,21 @@ class ScanMinGlobalTH(scan_base.ScanBase):
         if trim_mask is None:
             if trim_limit is not None and isinstance(trim_limit, bool):
                 tdac_mask = self.monopix.default_TDAC_mask(limit=trim_limit)
-                self.monopix.set_tdac(tdac_mask)
+                self.monopix.set_tdac(tdac_mask, overwrite=True)
             elif trim_limit is not None and trim_limit=="unbiased":
                 tdac_mask = self.monopix.default_TDAC_mask(unbiased=True)
-                self.monopix.set_tdac(tdac_mask)
+                self.monopix.set_tdac(tdac_mask, overwrite=True)
             else:
                 pass
         else:
             if isinstance(trim_mask, int):
-                self.monopix.set_tdac(trim_mask)
+                self.monopix.set_tdac(trim_mask, overwrite=True)
             elif trim_mask=="middle":
                 tdac_mask=np.full((self.monopix.chip_props["COL_SIZE"],self.monopix.chip_props["ROW_SIZE"]), 0, dtype=int)
-                for col in list(range(0,56)):
+                for col in list(range(0,self.monopix.chip_props["COL_SIZE"])):
                     tdac_mask[col,0:self.monopix.chip_props["ROW_SIZE"]:1] = 7
                     tdac_mask[col,0:self.monopix.chip_props["ROW_SIZE"]:2] = 8
-                self.monopix.set_tdac(tdac_mask)
+                self.monopix.set_tdac(tdac_mask, overwrite=True)
             else:
                 self.logger.info('Not a valid DAC setting')
 
@@ -121,7 +121,6 @@ class ScanMinGlobalTH(scan_base.ScanBase):
                 th_step[2]))
 
             # Shift global THs if you have not reached the limit.
-            self.monopix.set_preamp_en(en_current)
             for i, n in enumerate(th):
                 if (lowestTH_flag[i] == False):
                     th[i] += th_step[i]
@@ -130,9 +129,13 @@ class ScanMinGlobalTH(scan_base.ScanBase):
                     lowestTH_flag[i] == True
                 else:    
                     pass
+            self.monopix.set_preamp_en(en_current, overwrite=True)
 
             # Enable read-out for the corresponding exposure time.
             self.monopix.set_monoread()
+            for _ in range(10):
+                self.monopix["fifo"]["RESET"] 
+                time.sleep(0.002)
             time.sleep(exp_time)
             buf = self.monopix.get_data_now()
             self.monopix.stop_monoread()
@@ -140,9 +143,9 @@ class ScanMinGlobalTH(scan_base.ScanBase):
             # Interpret data, count pixels with hits and identify if they have reached the limit occupancy.
             fast_interpreter=interpreter.Interpreter()
             int_data, _=fast_interpreter.interpret_data(raw_data=buf, meta_data=None)
-            int_cleardata = int_data[np.bitwise_and(int_data["cnt"]<2, int_data["col"]<257)]
+            int_cleardata = int_data[np.bitwise_and(int_data["cnt"]<2, int_data["col"]<=self.monopix.chip_props["COL_SIZE"])]
             plot2d = np.histogram2d(int_cleardata["col"],int_cleardata["row"], bins=[np.arange(0,self.monopix.chip_props["COL_SIZE"]+1,1),np.arange(0,self.monopix.chip_props["ROW_SIZE"]+1,1)])[0]
-            arg=np.argwhere(plot2d > cnt_th)
+            arg=np.argwhere(plot2d >= cnt_th)
             if len(arg)>0:
                 for a in arg:
                     if a[0] in self.monopix.chip_props["COLS_M1"]:
@@ -177,12 +180,12 @@ class ScanMinGlobalTH(scan_base.ScanBase):
                             for col in csa_col_list:
                                 en_ref[col,:]=1
                         # If half of the current TH step is smaller than th_step_minimum:
-                        # Stop, flag the CSA's threshold as reaching its minimum and raise the TH by two steps as safety measure. 
+                        # Stop, flag the CSA's threshold as reaching its minimum and raise the TH by one step as safety measure. 
                         else:
                             self.logger.info("Pixels from CSA {0:s} have reached the lowest global TH ({1:.4f} V)".format(str(i+1), th[i]))
-                            th[i] -= th_step[i]*2
+                            #th[i] -= th_step[i]
                             lowestTH_flag[i] = True
-                            self.logger.info("Increasing the final lowest global TH of CSA {0:s} by {1:.4f} V".format(str(i+1), -th_step[i]*2))
+                            #self.logger.info("Increasing the final lowest global TH of CSA {0:s} by {1:.4f} V".format(str(i+1), -th_step[i]))
                             self.monopix.set_th(th_id = i+1, th_value = th[i])
                     else:
                         pass
@@ -272,7 +275,7 @@ if __name__ == "__main__":
     else:
         pix=[]
         m.set_preamp_en(m.PIXEL_CONF["EnPre"])
-        m.set_tdac(m.PIXEL_CONF["Trim"])
+        m.set_tdac(m.PIXEL_CONF["Trim"], overwrite=True)
         
         for i in range(0,m.chip_props["COL_SIZE"]):
            for j in range(0,m.chip_props["ROW_SIZE"]):

@@ -234,7 +234,7 @@ registers:
         VPFoll    : 15
         VNLoad    : 13
         VPLoad    : 7
-        TDAC_LSB  : 26
+        TDAC_LSB  : 24      # UNIRRADIATED: Noise tuning 24, Injection tuning 20
         Vsf       : 32
         Driver    : 32
         Mon_Vsf   : 0

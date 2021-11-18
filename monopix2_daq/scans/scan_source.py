@@ -163,8 +163,8 @@ if __name__ == "__main__":
                    pass
     else:
         pix=[]
-        m.set_preamp_en(m.PIXEL_CONF["EnPre"])
-        m.set_tdac(m.PIXEL_CONF["Trim"])
+        m.set_preamp_en(m.PIXEL_CONF["EnPre"], overwrite=True)
+        m.set_tdac(m.PIXEL_CONF["Trim"], overwrite=True)
         
         for i in range(0,m.chip_props["COL_SIZE"]):
            for j in range(0,m.chip_props["ROW_SIZE"]):

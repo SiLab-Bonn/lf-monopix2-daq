@@ -212,20 +212,26 @@ class Interpreter(object):
     def interpret_data(self, raw_data, meta_data=None, chunk_size=1000000):
         hit_dtype = [('col', '<u1'), ('row', '<u2'), ('le', '<u1'), ('te', '<u1'), ('cnt', '<u8'), ('timestamp', '<u8'), ('scan_param_id', '<u4')]
 
-        pbar = tqdm(total=len(raw_data))
+        n_words=len(raw_data)
         start = 0
         data_interpreter = RawDataInterpreter()
+        pbar = tqdm(total=n_words)
+        hit_data=np.array([], dtype=hit_dtype)
         if len(raw_data)==0:
             hit_data=np.array([], dtype=hit_dtype)
-        while start < len(raw_data):
-            tmpend = start + chunk_size
-
+        while start < n_words:
+            tmp_end = min(n_words, start + chunk_size)
+            raw_data_chunk = raw_data[start:tmp_end]
             hit_buffer = np.zeros(shape=chunk_size, dtype=hit_dtype)
 
-            hit_data = data_interpreter.interpret(raw_data[start:tmpend], meta_data, hit_buffer)
+            hit_data_chunk = data_interpreter.interpret(raw_data_chunk, meta_data, hit_buffer)
 
-            start = tmpend
-            pbar.update(chunk_size)
+            hit_data=np.concatenate((hit_data,hit_data_chunk))
+
+            pbar.update(tmp_end - start)
+
+            start = tmp_end
+
         pbar.close()
 
         return hit_data, data_interpreter.get_error_count()
