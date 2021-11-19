@@ -48,6 +48,7 @@ class Plotting(object):
         with tb.open_file(analyzed_data_file, 'r') as in_file:
             try:
                 self.HistOcc = in_file.root.HistOcc[:]
+                self.HitData = in_file.root.Dut[:]
             except:
                 pass
             self.scan_kwargs = yaml.full_load(in_file.root.kwargs[0])
@@ -103,6 +104,7 @@ class Plotting(object):
     def create_standard_plots(self):
         self.create_occupancy_map()
         self.create_fancy_occupancy()
+        self.create_tot_hist()
         self.create_pixel_conf_maps()
 
         if self.clustered:
@@ -141,6 +143,16 @@ class Plotting(object):
             self._plot_fancy_occupancy(hist=self.HistOcc[:].T)
         except Exception:
             self.log.error('Could not create fancy occupancy plot!')
+
+    def create_tot_hist(self):
+        try:
+            tot_data = np.zeros(64)
+            for i in np.argwhere(np.logical_and(self.HitData['cnt'] < 2, self.HitData['col'] < 60)).ravel():
+                tot_data[(self.HitData['te'][i] - self.HitData['le'][i]) & 0x3F] += 1
+
+            self._plot_tot_hist(hist=tot_data)
+        except Exception:
+            self.log.error('Could not create ToT histogram!')
 
     def create_pixel_conf_maps(self):
         try:
@@ -399,6 +411,12 @@ class Plotting(object):
                            log_y=False, plot_range=range(0, 64),
                            x_label='Cluster ToT [25 ns]',
                            y_label='# of clusters', suffix='cluster_tot')
+
+    def _plot_tot_hist(self, hist):
+        ''' Create 1D ToT histrogram '''
+        self._plot_1d_hist(hist=hist, title='ToT Distribution',
+                           x_label='ToT Values', y_label='# of Hits',
+                           plot_range=range(0, 64), suffix='tot_hist')
 
     def _plot_cl_shape(self, hist):
         ''' Create a histogram with selected cluster shapes '''
