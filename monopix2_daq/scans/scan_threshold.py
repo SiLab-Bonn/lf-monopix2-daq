@@ -23,7 +23,7 @@ local_configuration={
                      "n_mask_pix": 170,                       # Maximum number of enabled pixels on every injection/TH step
                      "disable_noninjected_pixel": True,     # A flag to determine if non-injected pixels are disabled while injecting
                      "mask_step": None,                     # Number of pixels between injected pixels in the same column (overwrites n_mask_pix if not None)
-                     "inj_n_param": 170,                    # Number of injection pulses per pixel and step
+                     "inj_n_param": 100,                    # Number of injection pulses per pixel and step
                      "with_calibration": True,              # Determine if calibration is used in the output plots
                      "c_inj": 2.76e-15,                     # Injection capacitance value in F
                      "trim_mask": None,                     # TRIM mask
