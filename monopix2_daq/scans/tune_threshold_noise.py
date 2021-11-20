@@ -135,8 +135,8 @@ class TuneTHnoise(scan_base.ScanBase):
         tuned_flags = np.ones(shape=self.monopix.PIXEL_CONF["EnPre"].shape, dtype=np.uint32)
         tuned_flags = np.invert(np.logical_and(tuned_flags.astype(bool),en_org.astype(bool)))
 
+        trim_ref = self.monopix.default_TDAC_mask(limit=True)
         for col in np.unique([coln[0] for coln in pix], axis=0):
-            trim_ref = self.monopix.default_TDAC_mask(limit=True)
             # Fill the TRIM step sign map (According to its tuning circuitry). 
             if col in self.monopix.chip_props["COLS_TUNING_UNI"]:
                 trim_increase_sign[col,0:self.monopix.chip_props["ROW_SIZE"]] = 1

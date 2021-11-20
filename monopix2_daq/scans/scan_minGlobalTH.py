@@ -13,6 +13,7 @@ from monopix2_daq.analysis import plotting
 """
 
 local_configuration={
+                     "monitor_pixel": [18,40],  	# Pixel to be monitored. Format: [COL,ROW]
                      "exp_time": 1.0,
                      "cnt_th": 4,                       # Number of counts in "exp_time" to consider a pixel noisy
                      "mask_factor": 0.005,              # Limit percentage of noisy pixels to be masked (per CSA)
@@ -35,6 +36,10 @@ class ScanMinGlobalTH(scan_base.ScanBase):
         # Load kwargs or default values.
         exp_time = kwargs.pop('exp_time', 1.0)
         cnt_th = kwargs.pop('cnt_th', 4)
+        with_tlu = kwargs.pop('with_tlu', True)
+        with_inj = kwargs.pop('with_inj', True)
+        with_rx1 = kwargs.pop('with_rx1', True)
+        with_mon = kwargs.pop('with_mon', True)
         mask_factor = kwargs.pop('mask_factor', 0.01)
         th = kwargs.pop('th_start', [0.9, 0.9, 0.9])
         th_stop = kwargs.pop('th_stop', [0.7, 0.7, 0.7])
@@ -42,9 +47,28 @@ class ScanMinGlobalTH(scan_base.ScanBase):
         trim_mask = kwargs.pop('trim_mask', None)
         trim_limit = kwargs.pop('trim_limit', None)
         pix=kwargs.pop('pix',list(np.argwhere(self.monopix.PIXEL_CONF["EnPre"][:,:])))
+        monitor_pixel = kwargs.pop('monitor_pixel', None)
 
         # Enable pixels.
         self.monopix.set_preamp_en(pix)
+
+        # Enable monitored pixel.
+        if monitor_pixel is not None:
+            self.monopix.set_mon_en(monitor_pixel)
+        else:
+            self.monopix.set_mon_en(pix[0])
+
+        # Enable timestamps.
+        if with_tlu:
+            tlu_delay = kwargs.pop('tlu_delay', 8)
+            self.monopix.set_tlu(tlu_delay)
+            self.monopix.set_timestamp640(src="tlu")
+        if with_inj:
+            self.monopix.set_timestamp640(src="inj")
+        if with_rx1:
+            self.monopix.set_timestamp640(src="rx1")
+        if with_mon:
+            self.monopix.set_timestamp640(src="mon")
 
         # Set the minimum TH STEP to be reached on the TH search (Negative values)
         th_step_minimum= [-0.001,-0.001,-0.001]
@@ -183,9 +207,9 @@ class ScanMinGlobalTH(scan_base.ScanBase):
                         # Stop, flag the CSA's threshold as reaching its minimum and raise the TH by one step as safety measure. 
                         else:
                             self.logger.info("Pixels from CSA {0:s} have reached the lowest global TH ({1:.4f} V)".format(str(i+1), th[i]))
-                            #th[i] -= th_step[i]
+                            th[i] -= th_step[i]
                             lowestTH_flag[i] = True
-                            #self.logger.info("Increasing the final lowest global TH of CSA {0:s} by {1:.4f} V".format(str(i+1), -th_step[i]))
+                            self.logger.info("Increasing the final lowest global TH of CSA {0:s} by {1:.4f} V".format(str(i+1), -th_step[i]))
                             self.monopix.set_th(th_id = i+1, th_value = th[i])
                     else:
                         pass
@@ -194,6 +218,8 @@ class ScanMinGlobalTH(scan_base.ScanBase):
 
             # Update the current enabled pixel mask with the reference one. 
             en_current = np.bitwise_and(en_current, en_ref)
+
+        self.monopix.stop_all_data()
 
         # Log final results. 
         self.logger.info("Minimum global thresholds reached for {0:%} of the pixels with an occupancy of {1:.1e} Hits / 25 ns".format(

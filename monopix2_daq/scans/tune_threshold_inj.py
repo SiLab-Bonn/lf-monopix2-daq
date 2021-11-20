@@ -138,7 +138,7 @@ class TuneTHinj(scan_base.ScanBase):
         # Initialize two empty maps that will keep track of the best current TRIM DAC values. (One for the TDAC value, one for the smallest absolute difference to target occupancy) 
         best_results_map = np.zeros((self.monopix.chip_props["COL_SIZE"], self.monopix.chip_props["ROW_SIZE"], 2), dtype=float)
         # Create an empty map that will keep track of the signs for the step in enabled pixels (According to its tuning circuitry). 
-        trim_increase_sign = np.zeros(shape=self.monopix.PIXEL_CONF["EnPre"].shape, dtype=np.int8)
+        trim_increase_sign = np.zeros(shape=self.monopix.PIXEL_CONF["EnPre"].shape, dtype=np.int16)
 
         for col in np.unique([coln[0] for coln in pix], axis=0):
             #Initialize TRIM DAC values in the middle of the range.
@@ -207,11 +207,11 @@ class TuneTHinj(scan_base.ScanBase):
 
             # If the occupancy is larger than target, increase the pixel threshold value in the right direction.
             larger_occ = (occupancy_map > ( occ_target + round(occ_target * occ_acceptance) ) )
-            trim_ref[larger_occ] += ( t_step * trim_increase_sign[larger_occ]) 
+            trim_ref[larger_occ] += ( t_step * trim_increase_sign[larger_occ]).astype(np.uint8) 
 
             # If the occupancy is smaller than target, reduce the pixel threshold value in the right direction.
             smaller_occ = (occupancy_map < ( occ_target - round(occ_target * occ_acceptance) ) )
-            trim_ref[smaller_occ] -= ( t_step * trim_increase_sign[smaller_occ]) 
+            trim_ref[smaller_occ] -= ( t_step * trim_increase_sign[smaller_occ]).astype(np.uint8) 
 
             # Check if values went beyond the TDAC limit.
             trim_ref[trim_ref>15]=15

@@ -588,7 +588,7 @@ class Monopix2(Dut):
         # Log registers changed
         self.logger.info(s)
 
-    def _write_pixel_mask(self, bit, mask, bit_pos=0, ro_off=False, overwrite=False):
+    def _write_pixel_mask(self, bit, mask, bit_pos=0, ro_off=True, overwrite=False):
         #TODO: CHECK FUNCTION
         """
         Writes a mask for pixel configuration.
@@ -1005,7 +1005,7 @@ class Monopix2(Dut):
 
     def set_monoread(self, start_freeze=90, start_read=90+2, stop_read=90+2+2,
                      stop_freeze=90+40, stop=90+40+24, read_shift=(27+4)*2,
-                     sync_timestamp=True, decode=True):
+                     sync_timestamp=True, decode=True, bcid_reset_only=False):
         """
         Enables the read-out of the chip.
 
@@ -1047,7 +1047,7 @@ class Monopix2(Dut):
         self['CONF']['ClkBX'] = 1
         self['CONF']['ClkOut'] = 1
         # Reset read-out.
-        self.reset_monoread(wait=0.001, sync_timestamp=sync_timestamp, bcid_only=False)
+        self.reset_monoread(wait=0.001, sync_timestamp=sync_timestamp, bcid_only=bcid_reset_only)
         # Set initial threshold values of all global thresholds.
         self.set_th([1,2,3], current_th)
         # Reset FIFO
