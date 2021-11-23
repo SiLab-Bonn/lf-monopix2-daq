@@ -5,6 +5,7 @@ import matplotlib
 import logging
 import copy
 import yaml
+import matplotlib.pyplot as plt
 
 from scipy.optimize import curve_fit
 from matplotlib import colors, cm
@@ -278,6 +279,29 @@ class Plotting(object):
                                     suffix='threshold_distribution')                    
         except Exception as e:
             self.logger.error('Could not create threshold plot! ({0})'.format(e))
+
+    def create_stacked_threshold_plot(self, scan_parameter_name='Scan parameter', electron_axis=False):
+        try:
+            plot_range = None
+
+            mask = np.full((COL_SIZE, ROW_SIZE), False)
+            sel = np.logical_and(self.EnPre[:] == 1, self.Trim[:] < 17)
+            mask[~sel] = True
+            tdac_map = np.ma.masked_array(self.Trim, mask)
+            th_map = np.ma.masked_array(self.ThresholdMap, mask)
+
+            self._plot_stacked_threshold(data=th_map.T,
+                                         tdac_mask=tdac_map.T,
+                                         plot_range=plot_range,
+                                         electron_axis=electron_axis,
+                                         x_axis_title=scan_parameter_name,
+                                         y_axis_title='# of pixels',
+                                         title='Threshold distribution for enabled pixels',
+                                         suffix='tdac_threshold_distribution',
+                                         min_tdac=0, max_tdac=15,
+                                         range_tdac=16)
+        except Exception:
+            self.log.error('Could not create stacked threshold plot!')
 
     def create_noise_plot(self, logscale=False, scan_parameter_name='Scan parameter', electron_axis=False):
         try:
@@ -963,6 +987,108 @@ class Plotting(object):
             self._add_electron_axis(fig, ax)
 
         self._save_plots(fig, suffix='scurves')
+
+    def _plot_stacked_threshold(self, data, tdac_mask, plot_range=None, electron_axis=False, x_axis_title=None, y_axis_title='# of hits', z_axis_title='TDAC',
+                                title=None, suffix=None, min_tdac=15, max_tdac=0, range_tdac=16,
+                                fit_gauss=True, plot_legend=True, centered_ticks=False):
+
+        if plot_range is None:
+            diff = np.amax(data) - np.amin(data)
+            if (np.amax(data)) > np.median(data) * 5:
+                plot_range = np.arange(
+                    np.amin(data), np.median(data) * 5, diff / 100.)
+            else:
+                plot_range = np.arange(np.amin(data), np.amax(data) + diff / 100., diff / 100.)
+
+        tick_size = plot_range[1] - plot_range[0]
+
+        hist, bins = np.histogram(np.ravel(data), bins=plot_range)
+
+        bin_centres = (bins[:-1] + bins[1:]) / 2
+        p0 = (np.amax(hist), np.nanmean(bins), (max(plot_range) - min(plot_range)) / 3)
+
+        if fit_gauss:
+            try:
+                coeff, _ = curve_fit(self._gauss, bin_centres, hist, p0=p0)
+            except Exception:
+                coeff = None
+                self.log.warning('Gauss fit failed!')
+        else:
+            coeff = None
+
+        if coeff is not None:
+            points = np.linspace(min(plot_range), max(plot_range), 500)
+            gau = self._gauss(points, *coeff)
+
+        fig = Figure()
+        FigureCanvas(fig)
+        ax = fig.add_subplot(111)
+
+        cmap = copy.copy(cm.get_cmap('viridis', (range_tdac)))
+        # create dicts for tdac data
+        data_thres_tdac = {}
+        hist_tdac = {}
+        tdac_bar = {}
+
+        # select threshold data for different tdac values according to tdac map
+        for tdac in range(range_tdac):
+            data_thres_tdac[tdac] = data[tdac_mask == tdac - abs(min_tdac)]
+            # histogram threshold data for each tdac
+            hist_tdac[tdac], _ = np.histogram(np.ravel(data_thres_tdac[tdac]), bins=bins)
+
+            if tdac == 0:
+                tdac_bar[tdac] = ax.bar(bins[:-1], hist_tdac[tdac], width=tick_size, align='edge', color=cmap(.9 / range_tdac * tdac), linewidth=0)
+            elif tdac == 1:
+                tdac_bar[tdac] = ax.bar(bins[:-1], hist_tdac[tdac], bottom=hist_tdac[0], width=tick_size, align='edge', color=cmap(1. / range_tdac * tdac), linewidth=0)
+            else:
+                tdac_bar[tdac] = ax.bar(bins[:-1], hist_tdac[tdac], bottom=np.sum([hist_tdac[i] for i in range(tdac)], axis=0), width=tick_size, align='edge', color=cmap(1. / range_tdac * tdac), linewidth=0)
+
+        fig.subplots_adjust(right=0.85)
+        cax = fig.add_axes([0.89, 0.11, 0.02, 0.645])
+        if centered_ticks:
+            ctick_size = (max_tdac - min_tdac) / (range_tdac - 1)
+            sm = plt.cm.ScalarMappable(cmap=cmap, norm=colors.Normalize(vmin=min_tdac - ctick_size / 2, vmax=max_tdac + ctick_size / 2))
+        else:
+            sm = plt.cm.ScalarMappable(cmap=cmap, norm=colors.Normalize(vmin=min_tdac, vmax=max_tdac))
+        sm.set_array([])
+        cb = fig.colorbar(sm, cax=cax, ticks=np.linspace(start=min_tdac, stop=max_tdac, num=range_tdac, endpoint=True))
+        cb.set_label(z_axis_title)
+
+        if coeff is not None:
+            ax.plot(points, gau, "r-", label='Normal distribution')
+
+        ax.set_xlim((min(plot_range), max(plot_range)))
+        ax.set_title(title, color=TITLE_COLOR)
+        if x_axis_title is not None:
+            ax.set_xlabel(x_axis_title)
+        if y_axis_title is not None:
+            ax.set_ylabel(y_axis_title)
+        ax.grid(True)
+
+        if plot_legend:
+            sel = (data < 1e5)
+            mean = np.nanmean(data[sel])
+            rms = np.nanstd(data[sel])
+            if electron_axis:
+                textright = '$\\mu={0:1.3f}\\;$V\n$\\;\\;\\,=({1[0]:1.0f} \\pm {1[1]:1.0f}) \\; e^-$\n\n$\\sigma={2:1.3f}\\;$V\n$\\;\\;\\,=({3[0]:1.0f} \\pm {3[1]:1.0f}) \\; e^-$'.format(mean, self._convert_to_e(mean), rms, self._convert_to_e(rms, use_offset=False))
+            else:
+                textright = '$\\mu={0:1.3f}\\;$V\n$\\sigma={1:1.3f}\\;$V'.format(mean, rms)
+
+            # Fit results
+            if coeff is not None:
+                textright += '\n\nFit results:\n'
+                if electron_axis:
+                    textright += '$\\mu={0:1.3f}\\;$V\n$\\;\\;\\,=({1[0]:1.0f} \\pm {1[1]:1.0f}) \\; e^-$\n\n$\\sigma={2:1.3f}\\;$V\n$\\;\\;\\,=({3[0]:1.0f} \\pm {3[1]:1.0f}) \\; e^-$'.format(abs(coeff[1]), self._convert_to_e(abs(coeff[1])), abs(coeff[2]), self._convert_to_e(abs(coeff[2]), use_offset=False))
+                else:
+                    textright += '$\\mu={0:1.3f}\\;$V\n$\\sigma={1:1.3f}\\;$V'.format(abs(coeff[1]), abs(coeff[2]))
+
+                props = dict(boxstyle='round', facecolor='wheat', alpha=0.5)
+                ax.text(0.745, 0.95, textright, transform=ax.transAxes, fontsize=8, verticalalignment='top', bbox=props)
+
+        if electron_axis:
+            self._add_electron_axis(fig, ax)
+
+        self._save_plots(fig, suffix=suffix)
 
     def _plot_single_scurves(self, scurves, scan_parameters, electron_axis=False, max_occ=None, scan_parameter_name=None, title='S-curves', ylabel='Hits'):
         
