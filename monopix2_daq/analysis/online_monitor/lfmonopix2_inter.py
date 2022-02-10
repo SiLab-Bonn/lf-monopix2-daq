@@ -109,6 +109,7 @@ class LFMonopix2(Transceiver):
         # hit_buffer = np.zeros(4 * len(raw_data), dtype=au.hit_dtype)
         hit_buffer = np.zeros(shape=self.chunk_size, dtype=hit_dtype)
         hits = self.interpreter.interpret(raw_data, None, hit_buffer)  # No meta_data needed for online_monitor
+        hits = hits[np.logical_and(hits['cnt'] < 2, hits['col'] < 60)]
 
         self.hits_last_readout = len(hits)
         self.total_hits += len(hits)
