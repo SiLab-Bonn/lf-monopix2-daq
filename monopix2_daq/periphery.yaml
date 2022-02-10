@@ -1,0 +1,126 @@
+# Configuration file for BDAQ periphery devices. This example uses a TTi QL355TP
+# as powersupply for VINA (Channel 1) and VIND (Channel2) as well as for the BDAQ
+# board (AUX channel). In case you are working with a module, this example uses a
+# Keithley 2410 SourceMeter to bias the sensor. For a detailed explanation, see
+# http://basil.readthedocs.io.
+#
+# To use the periphery module, set use_periphery to True in testbench.yaml.
+# If you set up monitoring there, all specified power supplies and temperature sensors
+# will be queried in the specified interval and the results are stored in an h5 file.
+#
+# In order to use these periphereral devices to automatically control module powersupplies,
+# the names in the 'registers' section below need to be assigned to a module in the testbench.yaml:
+#
+#  modules:
+#    module_0:
+#      powersupply:
+#        lv_name: LV-0          # One of the names from the registers section below
+#        lv_voltage: 1.7
+#        lv_current_limit: 2.0
+#
+#        hv_name: LV-0          # One of the names from the registers section below
+#        hv_voltage: 5
+#        hv_current_limit: 1e-6
+#      chip_0:
+#        ...
+#
+# See the BDAQ wiki for a detailed explanation of the 'testbench.yaml' file.
+
+# TODO: Clean-up + Integration of LV power supply
+transfer_layer:
+  # T / H sensors
+  # - name: Serial1
+  #   type: Serial
+  #   init:
+  #     port: /dev/ttyUSB3
+  #     read_termination: ""
+  #     baudrate: 115220
+  #     timeout: 2.0
+  # module_0 LV powersupply
+  #- name: Serial2
+  #  type: Serial
+  #  init:
+  #    port: /dev/ttyUSB0
+  #    read_termination: "\r\n"
+  #    write_termination: "\n"
+  #    baudrate: 19200
+  #    timeout: 2.0
+  #    xonxoff: True
+  #    parity: N
+  #    stopbits: 1
+  #    bytesize: 8
+  # # module_0 HV powersupply
+  - name: Serial3
+    type: Serial
+    init:
+      port: /dev/ttyUSB0
+      read_termination: "\r"
+      baudrate: 19200
+      timeout: 1
+  # # Multimeter for DAC and ADC measurements
+  # - name: Serial4
+  #   type: Serial
+  #   init:
+  #     port: /dev/ttyUSB2
+  #     read_termination: "\r"
+  #     baudrate: 19200
+  #     timeout: 2
+  # # Sourcemeter for DAC and ADC measurements
+  #- name: Serial5
+  #  type: Serial
+  #  init:
+  #    port: /dev/ttyUSB0
+  #    read_termination: "\r"
+  #    baudrate: 19200
+  #    timeout: 2
+
+hw_drivers:
+  # # T / H sensors
+  # - name: Thermohygrometer
+  #   type: sensirion_ekh4
+  #   interface: Serial1
+  # LV powersupply
+  #- name: LVPowersupply1
+  #  type: tti_ql355tp
+  #  interface: Serial2
+  # # HV powersupply
+  - name: SensorBias
+    type: scpi
+    interface: Serial3
+    init:
+      device: Keithley 2410
+   # Multimeter for DAC and ADC measurements
+  # - name: Multimeter
+  #   type: scpi
+  #   interface: Serial4
+  #   init:
+  #     device: Keithley 2000
+  # # Sourcemeter for DAC and ADC measurements
+  #- name: Sourcemeter
+  #  type: scpi
+  #  interface: Serial5
+  #  init:
+  #    device: Keithley 2410
+
+#registers:
+  # Powersupply for BDAQ board
+  #- name: BDAQ
+  #  type: FunctionalRegister
+  #  hw_driver: LVPowersupply1
+  #  arg_names: [value, on]
+  #  arg_add: { "channel": 3 }
+  # # A T/H Sensor
+  # - name: module_0-Thermohygrometer
+  #   type: FunctionalRegister
+  #   hw_driver: Thermohygrometer
+  #   arg_add: { "channel": 0 }
+  # A LV powersupply
+  #- name: LV-0
+  #  type: FunctionalRegister
+  #  hw_driver: LVPowersupply1
+  #  arg_names: [value, on]
+  #  arg_add: { "channel": 1 }
+  # # A HV powersupply
+  # - name: HV-0
+  #   type: FunctionalRegister
+  #   hw_driver: HVPowersupply1
