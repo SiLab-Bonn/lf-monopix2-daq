@@ -166,7 +166,34 @@ def generate_mask(n_cols=COL_SIZE, n_rows=ROW_SIZE, mask_steps=6, return_lists=T
         return global_mask_lists
     else:
         return global_mask
+
+# TODO: Faster way of implementing mask creating using np.roll()
+def generate_mask_per_column(enabled_columns=COL_SIZE, n_rows=ROW_SIZE, step_size=6, return_lists=True):
+    global_mask=[]
+    global_mask_lists=[]
+
+    number_of_masks=step_size*len(enabled_columns)
+    for i in range(number_of_masks):
+        global_mask.append(np.zeros([COL_SIZE,ROW_SIZE], dtype = "u1"))
     
+    list_rows=[]
+    for step in range(step_size):
+        list_rows.append(list(range(step,n_rows, step_size)))
+
+    mask_n = 0
+    while mask_n < number_of_masks:
+        for col in enabled_columns:
+            for step in range(step_size):
+                for row in list_rows[step]:
+                    global_mask[mask_n][col, row] = 1
+                global_mask_lists.append(np.argwhere(global_mask[mask_n][:]==1))
+                mask_n += 1
+
+    if return_lists:
+        return global_mask_lists
+    else:
+        return global_mask
+
 def get_scurve(f_event,pixel,type="inj"):
     res={}
     dat=f_event.root.Cnts[:]
