@@ -66,6 +66,7 @@ class Plotting(object):
                 self.ThresholdMap = in_file.root.ThresholdMap[:, :]
                 self.Chi2Map = in_file.root.Chi2Map[:, :]
                 self.NoiseMap = in_file.root.NoiseMap[:]
+                self.tot_ave = in_file.root.ToTAve[:, :]
                 # self.n_failed_scurves = self.n_enabled_pixels - len(self.ThresholdMap[self.ThresholdMap != 0])
                
             try:
@@ -155,6 +156,23 @@ class Plotting(object):
         except Exception:
             self.logger.error('Could not create ToT histogram!')
 
+    def create_tot_calibration(self):
+        try:
+            self.scan_parameter_range = np.arange(self.scan_kwargs['injlist_param'][0], self.scan_kwargs['injlist_param'][1], self.scan_kwargs['injlist_param'][2])
+            data = np.empty((len(self.scan_parameter_range), 64))
+            for inj_step in range(0, self.tot_ave.shape[2]):
+                data[inj_step] = np.histogram(self.tot_ave[:, :, inj_step].ravel(), bins=64, range=(0, 63))[0]
+
+            self._plot_2d_param_hist(hist=data.T,
+                                     y_max=data.shape[1],
+                                     scan_parameters=self.scan_parameter_range,
+                                     electron_axis=True,
+                                     scan_parameter_name='Injection [V]',
+                                     title='ToT Scan Parameter Histogram',
+                                     ylabel='ToT code',
+                                     suffix='tot_param_hist')
+        except Exception as e:
+            self.logger.error('Could not create tot param histogram plot! ({0})'.format(e))
 
     def create_pixel_conf_maps(self):
         try:
@@ -666,58 +684,41 @@ class Plotting(object):
 
         self._save_plots(fig, suffix=suffix, tight=True)
 
+    def _plot_2d_param_hist(self, hist, scan_parameters, y_max=None, electron_axis=False, scan_parameter_name=None, title='Scan Parameter Histogram', ylabel='', suffix=None):
 
-    def _plot_histogram2d(self, hist, z_min=None, z_max=None, suffix=None, xlabel='', ylabel='', title='', z_label='N. of hits'):
-        x_bins = np.arange(-0.5, hist.shape[0] - 0.5)
-        y_bins = np.arange(-0.5, hist.shape[1] - 0.5)
+        if y_max is None:
+            y_max = hist.shape[0]
 
-        if z_max == 'median':
-            z_max = 2.0 * np.ma.median(hist[hist>0])
-        elif z_max == 'maximum':
-            z_max = np.ma.max(hist)
-        elif z_max is None:
-            z_max = np.percentile(hist, q=90)
-            if np.any(hist > z_max):
-                z_max = 1.1 * z_max
-        if hist.all() is np.ma.masked:
-            z_max = 1.0
-
-        if z_min is None:
-            z_min = np.ma.min(hist)
-        if z_min == z_max or hist.all() is np.ma.masked:
-            z_min = 0
+        x_bins = scan_parameters[:]  # np.arange(-0.5, max(scan_parameters) + 1.5)
+        y_bins = np.arange(0, y_max)
 
         fig = Figure()
         FigureCanvas(fig)
         ax = fig.add_subplot(111)
 
         fig.patch.set_facecolor('white')
-        cmap = cm.get_cmap('cool')
-        if np.allclose(hist, 0.0) or hist.max() <= 1:
-            z_max = 1.0
-        else:
-            z_max = hist.max()
-        # for small z use linear scale, otherwise log scale
-        if z_max <= 10.0:
-            bounds = np.linspace(start=0.0, stop=z_max, num=255, endpoint=True)
-            norm = colors.BoundaryNorm(bounds, cmap.N)
-        else:
-            bounds = np.linspace(start=1.0, stop=z_max, num=255, endpoint=True)
-            norm = colors.LogNorm()
 
-        im = ax.pcolormesh(x_bins, y_bins, hist.T, norm=norm, rasterized=True)
-        ax.set_title(title, color=TITLE_COLOR)
-        ax.set_xlabel(xlabel)
+        # log scale
+        norm = colors.LogNorm()
+
+        im = ax.pcolormesh(x_bins, y_bins, hist, norm=norm, rasterized=True)
+        ax.set_xlim(x_bins[0], x_bins[-1])
+        ax.set_ylim(-0.5, y_max)
+
+        cb = fig.colorbar(im, fraction=0.04, pad=0.05)
+
+        cb.set_label("# of pixels")
+        ax.set_title(title + " for enabled pixels", color=TITLE_COLOR)
+        if scan_parameter_name is None:
+            ax.set_xlabel('Scan parameter')
+        else:
+            ax.set_xlabel(scan_parameter_name)
         ax.set_ylabel(ylabel)
 
-        if z_max <= 10.0:
-            cb = fig.colorbar(im, ticks=np.linspace(start=0.0, stop=z_max, num=min(
-                11, math.ceil(z_max) + 1), endpoint=True), fraction=0.04, pad=0.05,format=matplotlib.ticker.FormatStrFormatter('%.3f'))
-        else:
-            cb = fig.colorbar(im, fraction=0.04, pad=0.05, format=matplotlib.ticker.FormatStrFormatter('%.3f') )
-        cb.set_label(z_label)
+        if electron_axis:
+            self._add_electron_axis(fig, ax)
 
-        self._save_plots(fig, suffix=suffix)
+        self._save_plots(fig, suffix='histogram')
 
     def _plot_occupancy(self, hist, 
                         electron_axis=False, 

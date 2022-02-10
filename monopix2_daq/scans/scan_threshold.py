@@ -240,11 +240,12 @@ class ScanThreshold(scan_base.ScanBase):
         with plotting.Plotting(analyzed_data_file=analyzed_data_file, cal_factor=(c_inj/1.602E-19)) as p:
             p.create_config_table()
             p.create_scurves_plot()
+            p.create_tot_calibration()
             p.create_threshold_map(electron_axis = with_calibration)
             p.create_noise_map(electron_axis = with_calibration)
             p.create_threshold_plot(scan_parameter_name = "Injection [V]", electron_axis=with_calibration)
             p.create_noise_plot(scan_parameter_name = "Injection [V]", electron_axis=with_calibration)
-            p.create_threshold_plot(scan_parameter_name = "Injection [V]", electron_axis=with_calibration)
+            p.create_stacked_threshold_plot(scan_parameter_name = "Injection [V]", electron_axis=with_calibration)
             p.create_pixel_conf_maps()
             #p.create_single_scurves(scan_parameter_name="Injection [V]", electron_axis = with_calibration)
 
