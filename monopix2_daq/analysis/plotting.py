@@ -143,7 +143,7 @@ class Plotting(object):
         try:
             self._plot_fancy_occupancy(hist=self.HistOcc[:].T)
         except Exception:
-            self.log.error('Could not create fancy occupancy plot!')
+            self.logger.error('Could not create fancy occupancy plot!')
 
     def create_tot_hist(self):
         try:
@@ -153,7 +153,8 @@ class Plotting(object):
 
             self._plot_tot_hist(hist=tot_data)
         except Exception:
-            self.log.error('Could not create ToT histogram!')
+            self.logger.error('Could not create ToT histogram!')
+
 
     def create_pixel_conf_maps(self):
         try:
@@ -285,7 +286,7 @@ class Plotting(object):
             plot_range = None
 
             mask = np.full((COL_SIZE, ROW_SIZE), False)
-            sel = np.logical_and(self.EnPre[:] == 1, self.Trim[:] < 17)
+            sel = np.logical_and(np.logical_and(self.EnPre[:] == 1, self.Trim[:] < 17), np.logical_and(self.Chi2Map > 0., self.ThresholdMap > 0))
             mask[~sel] = True
             tdac_map = np.ma.masked_array(self.Trim, mask)
             th_map = np.ma.masked_array(self.ThresholdMap, mask)
@@ -301,7 +302,7 @@ class Plotting(object):
                                          min_tdac=0, max_tdac=15,
                                          range_tdac=16)
         except Exception:
-            self.log.error('Could not create stacked threshold plot!')
+            self.logger.error('Could not create stacked threshold plot!')
 
     def create_noise_plot(self, logscale=False, scan_parameter_name='Scan parameter', electron_axis=False):
         try:
@@ -994,11 +995,7 @@ class Plotting(object):
 
         if plot_range is None:
             diff = np.amax(data) - np.amin(data)
-            if (np.amax(data)) > np.median(data) * 5:
-                plot_range = np.arange(
-                    np.amin(data), np.median(data) * 5, diff / 100.)
-            else:
-                plot_range = np.arange(np.amin(data), np.amax(data) + diff / 100., diff / 100.)
+            plot_range = np.arange(np.amin(data)- diff / 10., np.amax(data) + diff / 10., diff / 100.)
 
         tick_size = plot_range[1] - plot_range[0]
 
@@ -1012,7 +1009,7 @@ class Plotting(object):
                 coeff, _ = curve_fit(self._gauss, bin_centres, hist, p0=p0)
             except Exception:
                 coeff = None
-                self.log.warning('Gauss fit failed!')
+                self.logger.warning('Gauss fit failed!')
         else:
             coeff = None
 
