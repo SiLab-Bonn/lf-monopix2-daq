@@ -185,11 +185,11 @@ class ScanThreshold(scan_base.ScanBase):
                 for i in range(len(pix)):
                     if pix_frommask[pix[i][0], pix[i][1]]==1:
                         mask_pix.append(pix[i])
-                self.monopix.set_inj_en(mask_pix)
+                self.monopix.set_inj_en(mask_pix, overwrite=True)
                 if disable_noninjected_pixel:
-                    self.monopix.set_preamp_en(mask_pix)
+                    self.monopix.set_preamp_en(mask_pix, overwrite=True)
                 if with_mon:
-                    self.monopix.set_mon_en(mask_pix[0])
+                    self.monopix.set_mon_en(mask_pix[0], overwrite=True)
                 #mask_pix_tmp=mask_pix
                 #for i in range(n_mask_pix-len(mask_pix)):
                 #    mask_pix_tmp.append([-1,-1])
