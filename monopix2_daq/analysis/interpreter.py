@@ -560,7 +560,7 @@ class RawDataInterpreter(object):
 
             # Third word comes first in data
 
-            elif is_timestamp640_inj_3(raw_data_word):
+            elif is_timestamp640_tlu_3(raw_data_word):
                 if self.tlu_timestamp640_flag != 0:
                     self.reset()
                     self.error_cnt += 1
@@ -570,7 +570,7 @@ class RawDataInterpreter(object):
                 
                 self.tlu_timestamp640_flag = 1
 
-            elif is_timestamp640_inj_2(raw_data_word):
+            elif is_timestamp640_tlu_2(raw_data_word):
                 if self.tlu_timestamp640_flag != 1:
                     self.reset()
                     self.error_cnt += 1
@@ -580,7 +580,7 @@ class RawDataInterpreter(object):
 
                 self.tlu_timestamp640_flag = 2
 
-            elif is_timestamp640_inj_1(raw_data_word):
+            elif is_timestamp640_tlu_1(raw_data_word):
                 if self.tlu_timestamp640_flag != 2:
                     self.reset()
                     self.error_cnt += 1
