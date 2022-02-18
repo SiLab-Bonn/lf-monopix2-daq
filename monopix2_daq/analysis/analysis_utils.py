@@ -27,6 +27,24 @@ def gauss(x, *p):
     amplitude, mu, sigma = p
     return amplitude * np.exp(- (x - mu)**2.0 / (2.0 * sigma**2.0))
 
+def boxfc(x_data, *parameters):
+    """Box function"""
+    box_Amp, box_mean, box_width, box_sigma = parameters
+    return (box_Amp/2)*( erf(((x_data-box_mean)+(box_width/2))/(np.sqrt(2)*box_sigma)) + erf(((box_width/2)-(x_data-box_mean))/(np.sqrt(2)*box_sigma)) )
+
+def fit_boxfc(x_data, y_data):
+    """Fit Box+Gaussian"""
+    x_data = np.array(x_data)
+    y_data = np.array(y_data)
+    y_maxima=x_data[np.where(y_data[:]==np.max(y_data))[0]]    
+    params_guess = np.array([np.max(y_data), y_maxima[0], 50, 5])
+    try:
+        params_from_fit = curve_fit(boxfc, x_data, y_data, p0=params_guess)
+    except RuntimeError:
+        print ('Fit did not work boxfc: %s %s %s %s', str(params_guess[0]), str(params_guess[1]), str(params_guess[2]), str(params_guess[3]))
+        return params_guess
+    return params_from_fit[0]
+
 @numba.njit
 def correlate_scan_ids(hits, meta_data):
     meta_i = 0
