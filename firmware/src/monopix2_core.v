@@ -132,6 +132,7 @@ wire [31:0] TS_INJ_FIFO_DATA;
 wire TLU_FIFO_READ,TLU_FIFO_EMPTY;
 wire [31:0] TLU_FIFO_DATA;
 // assign TLU_FIFO_EMPTY = 1;
+wire TLU_FIFO_PREEMPT_REQ;
 
 wire TS_FIFO_READ,TS_FIFO_EMPTY;
 wire [31:0] TS_FIFO_DATA;
@@ -162,7 +163,8 @@ rrp_arbiter
                  ~RX_FIFO_EMPTY,
                  ~TS_TLU_FIFO_EMPTY,
                  ~TLU_FIFO_EMPTY}),
-    .HOLD_REQ({7'b0}),
+    //.HOLD_REQ({7'b0}),
+    .HOLD_REQ({1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, TLU_FIFO_PREEMPT_REQ}),
     .DATA_IN({TS_INJ_FIFO_DATA,
               TS_MON_FIFO_DATA,
               TS_MON_FIFO_DATA_TRAILING,
@@ -240,7 +242,7 @@ tlu_slave #(
     .FIFO_READ(TLU_FIFO_READ),
     .FIFO_EMPTY(TLU_FIFO_EMPTY),
     .FIFO_DATA(TLU_FIFO_DATA),
-    .FIFO_PREEMPT_REQ(),
+    .FIFO_PREEMPT_REQ(TLU_FIFO_PREEMPT_REQ),
      
     .TRIGGER_ENABLED(),
     .TRIGGER_SELECTED(),
