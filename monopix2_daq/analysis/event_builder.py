@@ -241,11 +241,11 @@ if __name__=="__main__":
     if args.fin is not None:
         fin=args.fin
     else:
-        fin="/home/idcs/silab_devices/lfmonopix2/20211119_DESYtestbeam_debug/TB_DESY_202111/20211121_091750_scan_source_interpreted.h5"
+        fin=""
     if args.fref is not None:
-        fin=args.fref
+        fref=args.fref
     else:
-        fref="/home/idcs/silab_devices/lfmonopix2/20211119_DESYtestbeam_debug/TB_DESY_202111/54_module_0_ext_trigger_scan_interpreted.h5"
+        fref=""
     if args.fcal is not None:
         fin=args.fcal
     else:
@@ -255,6 +255,8 @@ if __name__=="__main__":
     fin_filename=os.path.split(fin)[1]
 
     output_folder=os.path.join(base_path, fin_filename[:-15])
+    if not os.path.exists(output_folder):
+        os.makedirs(output_folder)
     fout=os.path.join(output_folder, fin_filename[:-14]+"ev.h5")
 
     build_events(fin, fref, fout, fcal, plot_flag=True)

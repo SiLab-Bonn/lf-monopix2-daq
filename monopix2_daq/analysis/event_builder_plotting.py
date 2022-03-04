@@ -62,8 +62,8 @@ class event_Builder_Plotting(object):
         plt.title("TLU-Scintillator(RX1) [640MHz]")
         plt.xlabel("TLU-RX1 [640MHz Clk]")
         plt.ylabel("Events")
-        plt.axvline(diff_offset-sigma, color='g', linestyle='--', label='In-time')
-        plt.axvline(diff_offset+width+sigma, color='g', linestyle='--')
+        plt.axvline(diff_offset-np.abs(sigma), color='g', linestyle='--', label='In-time')
+        plt.axvline(diff_offset+np.abs(width)+np.abs(sigma), color='g', linestyle='--')
         plt.axvline(lower_lim, color='r', linestyle='--', label='TLU cut')
         plt.axvline(upper_lim, color='r', linestyle='--')
         plt.yscale("log")
@@ -123,8 +123,8 @@ class event_Builder_Plotting(object):
         plt.title("LE-Scintillator(RX1) [640MHz]")
         plt.xlabel("LE-RX1 [640MHz Clk]")
         plt.ylabel("Events")
-        plt.axvline(diff_offset-sigma, color='g', linestyle='--', label='In-time')
-        plt.axvline(diff_offset+width+sigma, color='g', linestyle='--')
+        plt.axvline(diff_offset-np.abs(sigma), color='g', linestyle='--', label='In-time')
+        plt.axvline(diff_offset+np.abs(width)+np.abs(sigma), color='g', linestyle='--')
         plt.axvline(lower_lim, color='r', linestyle='--', label='TLU cut')
         plt.axvline(upper_lim, color='r', linestyle='--')
         plt.yscale("log")
@@ -155,8 +155,8 @@ class event_Builder_Plotting(object):
         sigma=boxfit_params[3]
 
         diff_offset=boxfit_params[1]-boxfit_params[2]/2.0
-        lower_lim=round(diff_offset-1*width-5*sigma,0)
-        upper_lim=round(diff_offset+6*width+5*sigma,0)
+        lower_lim=round(diff_offset-1*np.abs(width)-5*np.abs(sigma),0)
+        upper_lim=round(diff_offset+6*np.abs(width)+5*np.abs(sigma),0)
         print("Rising edge of the main peak (TLU-RX1 offset @ 640MHz Clocks) located at %s"%str(diff_offset))
 
         plt.clf()
@@ -167,8 +167,8 @@ class event_Builder_Plotting(object):
         plt.title("Frame in built events [640MHz]")
         plt.xlabel("Frame (LE-RX1) [640MHz Clk]")
         plt.ylabel("Events")
-        plt.axvline(diff_offset-sigma, color='g', linestyle='--', label='In-time')
-        plt.axvline(diff_offset+width+sigma, color='g', linestyle='--')
+        plt.axvline(diff_offset-np.abs(sigma), color='g', linestyle='--', label='In-time')
+        plt.axvline(diff_offset+np.abs(width)+np.abs(sigma), color='g', linestyle='--')
         #plt.axvline(lower_lim, color='r', linestyle='--', label='TLU cut')
         #plt.axvline(upper_lim, color='r', linestyle='--')
         plt.yscale("log")

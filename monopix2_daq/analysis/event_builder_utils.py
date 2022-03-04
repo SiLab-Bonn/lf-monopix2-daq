@@ -71,9 +71,9 @@ def hist_and_fit_TLUvsRXdistance(tlu_match_table, fout):
     width=boxfit_params[2]
     sigma=boxfit_params[3]
 
-    diff_offset=boxfit_params[1]-boxfit_params[2]/2.0
-    lower_lim=round(diff_offset-1*width-5*sigma,0)
-    upper_lim=round(diff_offset+2*width+5*sigma,0)
+    diff_offset=boxfit_params[1]-np.abs(width)/2.0
+    lower_lim=round(diff_offset-1*np.abs(width)-5*np.abs(sigma),0)
+    upper_lim=round(diff_offset+2*np.abs(width)+5*np.abs(sigma),0)
     print("Rising edge of the main peak (TLU-RX1 offset @ 640MHz Clocks) located at %s"%str(diff_offset))
 
     print ("Filtering TLU_timestamp-Rx1_timestamp by upper_lim of ",upper_lim," and lower_lim of",lower_lim)
@@ -407,14 +407,14 @@ def hist_and_fit_LEvsRXdistance(monopix_match_table, event_table, fout, add_safe
     width=boxfit_params[2]
     sigma=boxfit_params[3]
 
-    diff_offset=boxfit_params[1]-boxfit_params[2]/2.0
-    lower_lim=round(diff_offset-1*width-5*sigma,0)
-    upper_lim=round(diff_offset+6*width+5*sigma,0)
+    diff_offset=boxfit_params[1]-np.abs(width)/2.0
+    lower_lim=round(diff_offset-1*np.abs(width)-5*np.abs(sigma),0)
+    upper_lim=round(diff_offset+10*np.abs(width)+5*np.abs(sigma),0)
     print("Rising edge of the main peak (TLU-RX1 offset @ 640MHz Clocks) located at %s"%str(diff_offset))
 
 
     frame=diff-diff_offset+add_safety_offset
-    frame[frame<0]=0
+    #frame[frame<0]=0
     #frame[frame>0xFFFFFFFF]=0xFFFFFFFF  
     event_table["frame"]=np.uint16(frame)
     #valid=np.argwhere(np.bitwise_and(frame!=0,frame!=0xFFFFFFFF))[:,0]
