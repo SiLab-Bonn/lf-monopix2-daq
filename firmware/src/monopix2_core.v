@@ -280,7 +280,7 @@ timestamp640 #(
     .CLK320(CLK320),
     .CLK160(CLK160),
     .CLK40(CLK40),
-    .DI(LEMO_RX[0]),     //TLU_RESET
+    .DI(TLU_RESET),     // TLU_RESET | LEMO_RX[0]
     .EXT_TIMESTAMP(TIMESTAMP),
     .EXT_ENABLE(~TLU_BUSY),
 

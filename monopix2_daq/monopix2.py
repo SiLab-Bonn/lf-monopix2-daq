@@ -1131,19 +1131,19 @@ class Monopix2(Dut):
         self["timestamp_{0:s}".format(src)].reset()
         self["timestamp_{0:s}".format(src)]["EXT_TIMESTAMP"] = True
         if src == "tlu":
-                self["timestamp_tlu"]["INVERT"] = 1
+                self["timestamp_tlu"]["INVERT"] = 0
                 self["timestamp_tlu"]["ENABLE_TRAILING"] = 0
-                self["timestamp_tlu"]["ENABLE"] = 0
                 self["timestamp_tlu"]["ENABLE_EXTERN"] = 1
+                self["timestamp_tlu"]["ENABLE"] = 0
         elif src == "inj":
-                self["timestamp_inj"]["ENABLE_EXTERN"] = 0  # although this is connected to gate
                 self["timestamp_inj"]["INVERT"] = 1
                 self["timestamp_inj"]["ENABLE_TRAILING"] = 0
+                self["timestamp_inj"]["ENABLE_EXTERN"] = 0  # although this is connected to gate
                 self["timestamp_inj"]["ENABLE"] = 1
         elif src == "rx1":
-                self["timestamp_rx1"]["INVERT"] = 1
-                self["timestamp_rx1"]["ENABLE_EXTERN"] = 0  # connected to 1'b1
+                self["timestamp_rx1"]["INVERT"] = 0
                 self["timestamp_rx1"]["ENABLE_TRAILING"] = 0
+                self["timestamp_rx1"]["ENABLE_EXTERN"] = 0  # connected to 1'b1
                 self["timestamp_rx1"]["ENABLE"] = 1
         elif src == "mon":  
                 self["timestamp_mon"]["INVERT"] = 1
