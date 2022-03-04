@@ -257,7 +257,7 @@ if __name__ == "__main__":
     from monopix2_daq import monopix2
     import argparse
     
-    parser = argparse.ArgumentParser(usage="python scan_source.py -t1 0.8 -t2 0.8 -t3 0.8 -f 0:44 -p -time 50",
+    parser = argparse.ArgumentParser(usage="python scan_minGlobalTH.py -f 0:44 -p",
              formatter_class=argparse.RawTextHelpFormatter)
     parser.add_argument("-conf","--config_file", type=str, default=None)
     parser.add_argument('-t1',"--th1", type=float, default=None)
@@ -265,8 +265,6 @@ if __name__ == "__main__":
     parser.add_argument('-t3',"--th3", type=float, default=None)
     parser.add_argument("-f","--flavor", type=str, default=None)
     parser.add_argument("-p","--power_reset", action='store_const', const=1, default=0) # Default = True: Skip power reset.
-    parser.add_argument("-time",'--scan_time', type=int, default=None,
-                        help="Scan time in seconds.")
     parser.add_argument("-dout","--output_dir", type=str, default=None)
     
     args=parser.parse_args()
@@ -314,10 +312,6 @@ if __name__ == "__main__":
         local_configuration["pix"]=pix
     else:
         pass
-    
-    if args.scan_time is not None:
-        local_configuration["scan_time"]=args.scan_time
-    
     
     if args.output_dir is not None:
         scan = ScanMinGlobalTH(m, fout=args.output_dir, online_monitor_addr="tcp://127.0.0.1:6500")

@@ -15,7 +15,7 @@ from monopix2_daq.analysis import plotting
 local_configuration={
                      "with_tlu": True,          # Enable TLU timestamping (40 & 640 MHz) in data
                      "with_inj": False,         # Enable Inj timestamping (640 MHz) in data 
-                     "with_rx1": False,          # Enable RX1 timestamping (640 MHz) in data 
+                     "with_rx1": True,          # Enable RX1 timestamping (640 MHz) in data 
                      "with_mon": False,         # Enable Mon/Hit-Or timestamping (640 MHz) in data
                      "monitor_pixel": None,  	# Pixel to be monitored. Format: [COL,ROW]
                      "scan_time": 10,           # Scan time (in seconds)
