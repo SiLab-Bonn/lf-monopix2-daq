@@ -13,40 +13,30 @@ from monopix2_daq.analysis import plotting
 """
 
 local_configuration={
-                     "monitor_pixel": [18,40],  	# Pixel to be monitored. Format: [COL,ROW]
-                     "exp_time": 1.0,
-                     "cnt_th": 4,                       # Number of counts in "exp_time" to consider a pixel noisy
-                     "mask_factor": 0.005,              # Limit percentage of noisy pixels to be masked (per CSA)
-                     "th_start": [1.0, 1.0, 1.0],       # Initial global threshold values for every CSA implementation
-                     "th_stop": [0.7, 0.7, 0.7],        # Minimum global threshold values for every CSA implementation
-                     "th_step": [-0.01,-0.01,-0.01],    # Telescopic steps to reach the minimum global threshold
-                     "trim_mask": None,                 # TRIM mask
-                     "trim_limit": False,               # TRIM limit (True: High, False: Lowest, "unbiased": Unbiased)
+    "monitor_pixel": [18,40],  	# Pixel to be monitored. Format: [COL,ROW]
+    "exp_time": 1.0,
+    "cnt_th": 4,                       # Number of counts in "exp_time" to consider a pixel noisy
+    "mask_factor": 0.005,              # Limit percentage of noisy pixels to be masked (per CSA)
+    "th_start": [1.0, 1.0, 1.0],       # Initial global threshold values for every CSA implementation
+    "th_stop": [0.7, 0.7, 0.7],        # Minimum global threshold values for every CSA implementation
+    "th_step": [-0.01,-0.01,-0.01],    # Telescopic steps to reach the minimum global threshold
+    "trim_mask": None,                 # TRIM mask
+    "trim_limit": False,               # TRIM limit (True: High, False: Lowest, "unbiased": Unbiased)
 }
 
 class ScanMinGlobalTH(scan_base.ScanBase):
     scan_id = "scan_minGlobalTH"
             
-    def scan(self,**kwargs): 
+    def scan(self, monitor_pixel=[18, 40], exp_time=1.0, cnt_th=4, mask_factor=0.005, th_start=[1.0, 1.0, 1.0], th_stop=[0.74, 0.74, 0.74], th_step=[-0.01, -0.01, -0.01], trim_mask=None, trim_limit=False, **kwargs):
         """
             Execute a search scan for the lowest global threshold.
             This scan tries to find the lowest achievable global thresholds at certain initial TRIM settings for every enabled CSA. 
         """
-        # Load kwargs or default values.
-        exp_time = kwargs.pop('exp_time', 1.0)
-        cnt_th = kwargs.pop('cnt_th', 4)
-        with_tlu = kwargs.pop('with_tlu', True)
-        with_inj = kwargs.pop('with_inj', True)
-        with_rx1 = kwargs.pop('with_rx1', True)
-        with_mon = kwargs.pop('with_mon', True)
-        mask_factor = kwargs.pop('mask_factor', 0.01)
-        th = kwargs.pop('th_start', [0.9, 0.9, 0.9])
-        th_stop = kwargs.pop('th_stop', [0.7, 0.7, 0.7])
-        th_step = kwargs.pop('th_step', [-0.01,-0.01,-0.01])
-        trim_mask = kwargs.pop('trim_mask', None)
-        trim_limit = kwargs.pop('trim_limit', None)
-        pix=kwargs.pop('pix',list(np.argwhere(self.monopix.PIXEL_CONF["EnPre"][:,:])))
-        monitor_pixel = kwargs.pop('monitor_pixel', None)
+        with_tlu = kwargs.pop('with_tlu', False)
+        with_inj = kwargs.pop('with_inj', False)
+        with_rx1 = kwargs.pop('with_rx1', False)
+        with_mon = kwargs.pop('with_mon', False)
+        th = th_start
 
         # Enable pixels.
         self.monopix.set_preamp_en(self.pix)

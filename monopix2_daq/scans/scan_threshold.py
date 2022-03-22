@@ -15,25 +15,25 @@ from monopix2_daq.analysis import plotting
 """
 
 local_configuration={
-                     "with_mon": True,                      # Enable Mon/Hit-Or timestamping (640 MHz) in data 
-                     "inj_lo": 0.2,                         # Fixed value on LF-Monopix2 board for VLo
-                     "injlist_param": [0.0,0.7,0.005],       # List of injection values to scan [start,end,step]
-                     "thlist": None,                        # List of global threshold values [TH1,TH2,TH3]
-                     "phaselist_param": None,               # List of phases
-                     "n_mask_pix": 170,                       # Maximum number of enabled pixels on every injection/TH step
-                     "disable_noninjected_pixel": True,     # A flag to determine if non-injected pixels are disabled while injecting
-                     "mask_step": None,                     # Number of pixels between injected pixels in the same column (overwrites n_mask_pix if not None)
-                     "inj_n_param": 100,                    # Number of injection pulses per pixel and step
-                     "with_calibration": True,              # Determine if calibration is used in the output plots
-                     "c_inj": 2.76e-15,                     # Injection capacitance value in F
-                     "trim_mask": None,                     # TRIM mask
-                     "trim_limit": None,                   # TRIM limit (True: High, False: Lowest, "unbiased": Unbiased)
+    "with_mon": True,                      # Enable Mon/Hit-Or timestamping (640 MHz) in data
+    "inj_lo": 0.2,                         # Fixed value on LF-Monopix2 board for VLo
+    "injlist_param": [0.0,0.7,0.005],       # List of injection values to scan [start,end,step]
+    "thlist": None,                        # List of global threshold values [TH1,TH2,TH3]
+    "phaselist_param": None,               # List of phases
+    "n_mask_pix": 170,                       # Maximum number of enabled pixels on every injection/TH step
+    "disable_noninjected_pixel": True,     # A flag to determine if non-injected pixels are disabled while injecting
+    "mask_step": None,                     # Number of pixels between injected pixels in the same column (overwrites n_mask_pix if not None)
+    "inj_n_param": 100,                    # Number of injection pulses per pixel and step
+    "with_calibration": True,              # Determine if calibration is used in the output plots
+    "c_inj": 2.76e-15,                     # Injection capacitance value in F
+    "trim_mask": None,                     # TRIM mask
+    "trim_limit": None,                   # TRIM limit (True: High, False: Lowest, "unbiased": Unbiased)
 }
 
 class ScanThreshold(scan_base.ScanBase):
     scan_id = "scan_threshold"
 
-    def scan(self,**kwargs): 
+    def scan(self, with_mon=True, inj_lo=0.2, injlist_param=[0.0, 0.7, 0.005], thlist=[1.0, 1.0, 1.0], phaselist_param=[0, 16, 1], n_mask_pix=170, mask_step=4, inj_n_param=100, trim_mask=None, trim_limit=None, disable_noninjected_pixel=True, **kwargs):
         """
             Execute a threshold scan.
             This script scans the injection amplitude over a chip with fixed DAC settings and fits the results to determine the current effective threshold.  
@@ -43,16 +43,6 @@ class ScanThreshold(scan_base.ScanBase):
         with_inj = kwargs.pop('with_inj', False)
         with_rx1 = kwargs.pop('with_rx1', False)
         with_mon = kwargs.pop('with_mon', False)
-        inj_lo = kwargs.pop('inj_lo', 0.2)
-        injlist_param = kwargs.pop('injlist_param', [0.0,0.5,0.05])
-        thlist = kwargs.pop('thlist', [1.0,1.0,1.0])
-        phaselist_param = kwargs.pop('phaselist_param', [0,16,1])
-        n_mask_pix = kwargs.pop('n_mask_pix', 170)
-        disable_noninjected_pixel = kwargs.pop('disable_noninjected_pixel', False)
-        mask_step = kwargs.pop('mask_step', 4)
-        inj_n_param = kwargs.pop('inj_n_param', self.monopix["inj"]["REPEAT"])
-        trim_mask = kwargs.pop('trim_mask', None)
-        trim_limit = kwargs.pop('trim_limit', None)
         debug_flag=False
 
         # Set a hard-coded limit on the maximum  number of pixels injected simultaneously.
@@ -247,6 +237,7 @@ class ScanThreshold(scan_base.ScanBase):
             p.create_threshold_plot(scan_parameter_name = "Injection [V]", electron_axis=with_calibration)
             p.create_noise_plot(scan_parameter_name = "Injection [V]", electron_axis=with_calibration)
             p.create_stacked_threshold_plot(scan_parameter_name = "Injection [V]", electron_axis=with_calibration)
+            p.create_tdac_plot()
             p.create_pixel_conf_maps()
             #p.create_single_scurves(scan_parameter_name="Injection [V]", electron_axis = with_calibration)
 
@@ -254,7 +245,7 @@ if __name__ == "__main__":
     from monopix2_daq import monopix2
     import argparse
     
-    parser = argparse.ArgumentParser(usage="python scan_threshold.py -t1 0.8 -t2 0.8 -t3 0.8 -f 0:44 -p -time 50",
+    parser = argparse.ArgumentParser(usage="python scan_threshold.py -t1 0.8 -t2 0.8 -t3 0.8 -f 0:44 -p",
              formatter_class=argparse.RawTextHelpFormatter)
     parser.add_argument("-conf", "--config_file", type=str, default=None)
     parser.add_argument('-t1',"--th1", type=float, default=None)
@@ -262,15 +253,6 @@ if __name__ == "__main__":
     parser.add_argument('-t3',"--th3", type=float, default=None)
     parser.add_argument("-f","--flavor", type=str, default=None)
     parser.add_argument("-p","--power_reset", action='store_const', const=1, default=0) # Default = True: Skip power reset.
-    parser.add_argument('-ib',"--inj_start", type=float, 
-         default=local_configuration["injlist_param"][0])
-    parser.add_argument('-ie',"--inj_stop", type=float, 
-         default=local_configuration["injlist_param"][1])
-    parser.add_argument('-is',"--inj_step", type=float, 
-         default=local_configuration["injlist_param"][2])
-    parser.add_argument("-nmp","--n_mask_pix",type=int,default=local_configuration["n_mask_pix"])
-    parser.add_argument('-ms',"--mask_step", type=int, default=None)
-    parser.add_argument('-injn',"--inj_n_param",type=int,default=local_configuration["inj_n_param"])
     
     args=parser.parse_args()
     args.no_power_reset = not bool(args.power_reset)

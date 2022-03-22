@@ -19,42 +19,31 @@ from tqdm import tqdm
 """
 
 local_configuration={
-                     "exp_time": 0.5,
-                     "cnt_th": 2,                           # Number of counts in "exp_time" to consider a pixel noisy
-                     "inj_lo": 0.2,                         # Fixed value on LF-Monopix2 board for VLo
-                     "thlist": None,                        # List of global threshold values [TH1,TH2,TH3]
-                     "phaselist_param": None,               # List of phases
-                     "n_mask_pix":170,                       # Maximum number of enabled pixels on every injection/TH step
-                     "disable_notenabled_pixel": True,     # A flag to determine if non-injected pixels are disabled while injecting
-                     "mask_step": None,                     # Number of pixels between injected pixels in the same column (overwrites n_mask_pix if not None)
-                     "with_calibration": True,              # Determine if calibration is used in the output plots
-                     "c_inj": 2.76e-15,                     # Injection capacitance value in F
-                     "lsb_dac": None,                       # LSB dac value
-
+    "exp_time": 0.5,
+    "cnt_th": 2,                           # Number of counts in "exp_time" to consider a pixel noisy
+    "thlist": None,                        # List of global threshold values [TH1,TH2,TH3]
+    "phaselist_param": None,               # List of phases
+    "n_mask_pix":170,                       # Maximum number of enabled pixels on every injection/TH step
+    "disable_notenabled_pixel": False,     # A flag to determine if non-injected pixels are disabled while injecting
+    "mask_step": None,                     # Number of pixels between injected pixels in the same column (overwrites n_mask_pix if not None)
+    "with_calibration": True,              # Determine if calibration is used in the output plots
+    "c_inj": 2.76e-15,                     # Injection capacitance value in F
+    "lsb_dac": None,                       # LSB dac value
 }
 
 class TuneTHnoise(scan_base.ScanBase):
     scan_id = "tune_threshold_noise"
 
-    def scan(self,**kwargs): 
+    def scan(self, exp_time=1.0, cnt_th=4, thlist=[1.0, 1.0, 1.0], phaselist_param=[0, 16, 1], n_mask_pix=170, mask_step=4, lsb_dac=None, disable_notenabled_pixel=False, **kwargs):
         """
             Execute an injection based tuning scan.
             This script attempts to tune the current enabled pixels TRIM DAC to have a threshold as close as possible to the target injection value.
         """
         # Load kwargs or default values.
-        exp_time = kwargs.pop('exp_time', 1.0)
-        cnt_th = kwargs.pop('cnt_th', 4)
         with_tlu = kwargs.pop('with_tlu', False)
         with_inj = kwargs.pop('with_inj', False)
         with_rx1 = kwargs.pop('with_rx1', False)
         with_mon = kwargs.pop('with_mon', False)
-        inj_lo = kwargs.pop('inj_lo', 0.2)
-        thlist = kwargs.pop('thlist', [1.0,1.0,1.0])
-        phaselist_param = kwargs.pop('phaselist_param', [0,16,1])
-        n_mask_pix = kwargs.pop('n_mask_pix', 170)
-        disable_notenabled_pixel = kwargs.pop('disable_notenabled_pixel', False)
-        mask_step = kwargs.pop('mask_step', 4)
-        lsb_dac = kwargs.pop('lsb_dac', None)
         debug_flag=False
 
         # Set a hard-coded limit on the maximum  number of pixels injected simultaneously.
@@ -256,7 +245,7 @@ if __name__ == "__main__":
     from monopix2_daq import monopix2
     import argparse
     
-    parser = argparse.ArgumentParser(usage="python scan_threshold.py -t1 0.8 -t2 0.8 -t3 0.8 -f 0:44 -p -time 50",
+    parser = argparse.ArgumentParser(usage="python scan_threshold.py -t1 0.8 -t2 0.8 -t3 0.8 -f 0:44 -p",
              formatter_class=argparse.RawTextHelpFormatter)
     parser.add_argument("-conf","--config_file", type=str, default=None)
     parser.add_argument('-t1',"--th1", type=float, default=None)
@@ -264,9 +253,6 @@ if __name__ == "__main__":
     parser.add_argument('-t3',"--th3", type=float, default=None)
     parser.add_argument("-f","--flavor", type=str, default=None)
     parser.add_argument("-p","--power_reset", action='store_const', const=1, default=0) # Default = True: Skip power reset.
-    parser.add_argument("-nmp","--n_mask_pix",type=int,default=local_configuration["n_mask_pix"])
-    parser.add_argument('-ms',"--mask_step", type=int, default=None)
-    #parser.add_argument('-injn',"--inj_n_param",type=int,default=local_configuration["inj_n_param"])
     
     args=parser.parse_args()
     args.no_power_reset = not bool(args.power_reset)
