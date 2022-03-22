@@ -1,0 +1,11 @@
+# General information
+general:
+  output_directory: "./output_data/" # Top-level output data directory, default is the current folder where the bdaq script is started
+
+# Connected Module
+module:
+  chip: # Arbitrary name of chip
+    chip_sn: "W02-0x"
+    chip_type: "LF-Monopix2"
+    chip_config: # Use config from h5 file
+    send_data: "tcp://127.0.0.1:6500" # Socket address of online monitor

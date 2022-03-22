@@ -11,9 +11,13 @@ import zmq
 from monopix2_daq import monopix2
 from monopix2_daq.fifo_readout import FifoReadout
 from contextlib import contextmanager
+from monopix2_daq.analysis import analysis_utils as au
 
 import online_monitor
 from online_monitor.utils import utils as ou
+
+PROJECT_FOLDER = os.path.dirname(__file__)
+TESTBENCH_DEFAULT_FILE = os.path.join(PROJECT_FOLDER, 'testbench.yaml')
 
 
 def send_data(socket, data, scan_par_id, index_start, index_stop, data_length, name='ReadoutData'):
@@ -73,15 +77,17 @@ class ScanBase(object):
         self.monopix=monopix2.Monopix2(conf=monopix, no_power_reset=no_power_reset)
         self.monopix.init()
 
+        self.configuration = self._load_testbench_cfg(bench_config=None)
+
         # Initialize chip configuration
         self._init_chip_config(**_)
 
         # Set working directory and file name
-        if fout==None:
-            self.working_dir = os.path.join(os.getcwd(),"output_data")
+        if self.configuration['bench']['general']['output_directory'] is not None:
+            self.working_dir = os.path.realpath(self.configuration['bench']['general']['output_directory'])
             self.run_name = time.strftime("%Y%m%d_%H%M%S_") + self.scan_id
         else:
-            self.working_dir = os.path.realpath(fout)
+            self.working_dir = os.path.join(os.getcwd(),"output_data")
             self.run_name = time.strftime("%Y%m%d_%H%M%S_") + self.scan_id
         if not os.path.exists(self.working_dir):
             os.makedirs(self.working_dir)
@@ -103,7 +109,7 @@ class ScanBase(object):
         self.scan_start_time=time.localtime()
 
         # Assign the socket where the data will be sent (For online monitoring)
-        self.socket = online_monitor_addr
+        self.socket = self.configuration['bench']['module']['chip']['send_data']
         self.context = zmq.Context.instance()
             
         # Define filters for table output data
@@ -284,11 +290,32 @@ class ScanBase(object):
         else:
             self.logger.error('Aborting run...')
 
+    def _load_testbench_cfg(self, bench_config):
+        ''' Load the bench config into the scan
+
+            Parameters:
+            ----------
+            bench_config : str or dict
+                    Testbench configuration (configuration as dict or its filename as string)
+        '''
+        conf = au.ConfigDict()
+        try:
+            if bench_config is None:
+                bench_config = TESTBENCH_DEFAULT_FILE
+            with open(bench_config) as f:
+                conf['bench'] = yaml.full_load(f)
+        except TypeError:
+            conf['bench'] = bench_config
+
+        return conf
+
     def _init_chip_config(self, config_file=None, th1=None, th2=None, th3=None, flavor=None, **_):
         ''' Initialize and configure chip, parameters given (mostly) as parser arguments
         '''
         if config_file is not None:
             self.monopix.load_config(config_file)
+        elif self.configuration['bench']['module']['chip']['chip_config'] is not None:
+            self.monopix.load_config(self.configuration['bench']['module']['chip']['chip_config'])
 
         self.monopix.set_inj_en(pix="none")
 
