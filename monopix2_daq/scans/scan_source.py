@@ -20,7 +20,6 @@ local_configuration={
                      "monitor_pixel": None,  	# Pixel to be monitored. Format: [COL,ROW]
                      "scan_time": 10,           # Scan time (in seconds)
                      "tlu_delay": 8,            # Delay setting for the TLU (Default for standard cable length: 7 or 8)
-                     "pix": [28,25]             # Single or list of Enabled pixels            
 }
 
 class ScanSource(scan_base.ScanBase):
@@ -38,19 +37,18 @@ class ScanSource(scan_base.ScanBase):
         with_mon = kwargs.pop('with_mon', True)
         scan_time = kwargs.pop('scan_time', 10)
         monitor_pixel = kwargs.pop('monitor_pixel', None)
-        pix=kwargs.pop('pix',list(np.argwhere(self.monopix.PIXEL_CONF["EnPre"][:,:])))
 
         cnt=0
         scanned=0
 
         # Enable pixels.
-        self.monopix.set_preamp_en(pix)
+        self.monopix.set_preamp_en(self.pix)
 
         # Enable monitored pixel.
         if monitor_pixel is not None:
             self.monopix.set_mon_en(monitor_pixel)
         else:
-            self.monopix.set_mon_en(pix[0])
+            self.monopix.set_mon_en(self.pix[0])
 
         # Enable timestamps.
         if with_tlu:
@@ -127,65 +125,14 @@ if __name__ == "__main__":
     parser.add_argument("-p","--power_reset", action='store_const', const=1, default=0) # Default = True: Skip power reset.
     parser.add_argument("-time",'--scan_time', type=int, default=None,
                         help="Scan time in seconds.")
-    parser.add_argument("-dout","--output_dir", type=str, default=None)
     
     args=parser.parse_args()
-    
-    m=monopix2.Monopix2(no_power_reset=not bool(args.power_reset))
-    m.init()
-    if args.config_file is not None:
-        m.load_config(args.config_file)
+    args.no_power_reset = not bool(args.power_reset)
 
-    m.set_inj_en(pix="none")
-
-    if args.th1 is not None:
-        m.set_th(1,args.th1)
-    if args.th2 is not None:
-        m.set_th(2, args.th2)
-    if args.th3 is not None:
-        m.set_th(3, args.th3)
-
-    if args.flavor is not None:
-        if args.flavor=="all":
-            collist=range(0,m.chip_props["COL_SIZE"])
-            m.logger.info("Enabled: Full matrix")
-        else:
-            tmp=args.flavor.split(":")
-            collist=range(int(tmp[0]),int(tmp[1]))
-            m.logger.info("Enabled: Columns {0:s} to {1:s}".format(tmp[0], tmp[1]))
-
-        pix=[]
-        for i in collist:
-           for j in range(0,m.chip_props["ROW_SIZE"]):               
-               if m.PIXEL_CONF["EnPre"][i,j]!=0:
-                   pix.append([i,j])
-               else:
-                   pass
-    else:
-        pix=[]
-        m.set_preamp_en(m.PIXEL_CONF["EnPre"], overwrite=True)
-        m.set_tdac(m.PIXEL_CONF["Trim"], overwrite=True)
-        
-        for i in range(0,m.chip_props["COL_SIZE"]):
-           for j in range(0,m.chip_props["ROW_SIZE"]):
-               if m.PIXEL_CONF["EnPre"][i,j]!=0:
-                   pix.append([i,j])
-               else:
-                   pass
-
-    if len(pix)>0:
-        local_configuration["pix"]=pix
-    else:
-        pass
-    
     if args.scan_time is not None:
         local_configuration["scan_time"]=args.scan_time
     
-    if args.output_dir is not None:
-        scan = ScanSource(m, fout=args.output_dir, online_monitor_addr="tcp://127.0.0.1:6500")
-    else:        
-        scan = ScanSource(m,online_monitor_addr="tcp://127.0.0.1:6500")
-    
+    scan = ScanSource(vars(args))
     scan.start(**local_configuration)
     scan.analyze()
     scan.plot()

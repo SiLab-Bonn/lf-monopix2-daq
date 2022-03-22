@@ -51,7 +51,7 @@ class ScanBase(object):
     A class that represents the fundamentals of any scan in LF-Monopix2
     """
 
-    def __init__(self, monopix=None, fout=None, online_monitor_addr="tcp://127.0.0.1:6500", no_power_reset=True):
+    def __init__(self, monopix=None, no_power_reset=True, **_):
         """
         Initialization of the scan.
 
@@ -68,12 +68,14 @@ class ScanBase(object):
             This conditional will enable or disable the power cycling of the GPAC, IF the "monopix" argument is "None" or a "yaml" file.  
             (If no_power_reset=True: The GPAC will NOT power cycle when the chip is initialized ---> Default for chip safety when high voltage is applied.)
         """
-        if isinstance(monopix,str) or (monopix is None):
-            self.monopix=monopix2.Monopix2(conf=monopix, no_power_reset=no_power_reset)
-        else:
-            self.monopix = monopix ## todo better ???, self.dut.dut["CONF"].... :(
-        ###self.dut=self.monopix.dut
-        
+
+        # # Initialize MIO3 board
+        self.monopix=monopix2.Monopix2(conf=monopix, no_power_reset=no_power_reset)
+        self.monopix.init()
+
+        # Initialize chip configuration
+        self._init_chip_config(**_)
+
         # Set working directory and file name
         if fout==None:
             self.working_dir = os.path.join(os.getcwd(),"output_data")
@@ -281,7 +283,47 @@ class ScanBase(object):
             self.logger.error('%s%s Aborting run...', msg, msg[-1] )
         else:
             self.logger.error('Aborting run...')
+
+    def _init_chip_config(self, config_file=None, th1=None, th2=None, th3=None, flavor=None, **_):
+        ''' Initialize and configure chip, parameters given (mostly) as parser arguments
+        '''
+        if config_file is not None:
+            self.monopix.load_config(config_file)
+
+        self.monopix.set_inj_en(pix="none")
+
+        if th1 is not None:
+            self.monopix.set_th(1, th1)
+        if th2 is not None:
+            self.monopix.set_th(2, th2)
+        if th3 is not None:
+            self.monopix.set_th(3, th3)
+
+        if flavor is not None:
+            if flavor=="all":
+                collist=range(0, self.monopix.chip_props["COL_SIZE"])
+                self.monopix.logger.info("Enabled: Full matrix")
+            else:
+                tmp=flavor.split(":")
+                collist=range(int(tmp[0]), int(tmp[1]))
+                self.monopix.logger.info("Enabled: Columns {0:s} to {1:s}".format(tmp[0], tmp[1]))
+
+            self.pix=[]
+            for i in collist:
+                for j in range(0, self.monopix.chip_props["ROW_SIZE"]):
+                    self.pix.append([i,j])
+        else:
+            self.pix=[]
+            self.monopix.set_preamp_en(self.monopix.PIXEL_CONF["EnPre"])
+            self.monopix.set_tdac(self.monopix.PIXEL_CONF["Trim"], overwrite=True)
             
+            for i in range(0, self.monopix.chip_props["COL_SIZE"]):
+                for j in range(0, self.monopix.chip_props["ROW_SIZE"]):
+                    if self.monopix.PIXEL_CONF["EnPre"][i,j]!=0:
+                        self.pix.append([i,j])
+                    else:
+                        pass
+
     def close(self):
         '''
         Stop readout of the chip.

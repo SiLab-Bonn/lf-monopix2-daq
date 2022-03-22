@@ -30,7 +30,6 @@ local_configuration={
                      "with_calibration": True,              # Determine if calibration is used in the output plots
                      "c_inj": 2.76e-15,                     # Injection capacitance value in F
                      "lsb_dac": None,                       # LSB dac value
-                     "pix":[18,25]                          # Single or list of Enabled pixels
 
 }
 
@@ -56,7 +55,6 @@ class TuneTHnoise(scan_base.ScanBase):
         disable_notenabled_pixel = kwargs.pop('disable_notenabled_pixel', False)
         mask_step = kwargs.pop('mask_step', 4)
         lsb_dac = kwargs.pop('lsb_dac', None)
-        pix=kwargs.pop('pix',list(np.argwhere(self.monopix.PIXEL_CONF["EnPre"][:,:])))
         debug_flag=False
 
         # Set a hard-coded limit on the maximum  number of pixels injected simultaneously.
@@ -66,7 +64,7 @@ class TuneTHnoise(scan_base.ScanBase):
         occ_target = cnt_th
 
         # Enable pixels.
-        self.monopix.set_preamp_en(pix, overwrite=True)
+        self.monopix.set_preamp_en(self.pix, overwrite=True)
 
         # Enable timestamps.
         if with_tlu:
@@ -94,17 +92,17 @@ class TuneTHnoise(scan_base.ScanBase):
 
         # Determine the number of pixels between the injected pixels for the mask. Limits by the maximum number of injected pixels, if needed.
         if mask_step is not None:    
-            if mask_step < (math.ceil(len(pix)/n_mask_pix_limit)):
-                mask_step = (math.ceil(len(pix)/n_mask_pix_limit))
+            if mask_step < (math.ceil(len(self.pix)/n_mask_pix_limit)):
+                mask_step = (math.ceil(len(self.pix)/n_mask_pix_limit))
             else:
                 pass
         else:
-            mask_step = (math.ceil(len(pix)/n_mask_pix))
+            mask_step = (math.ceil(len(self.pix)/n_mask_pix))
 
         # Create a list of masks to be applied for every injection step.
         list_of_masks=scan_utils.generate_mask(n_cols=self.monopix.chip_props["COL_SIZE"], n_rows=self.monopix.chip_props["ROW_SIZE"], mask_steps=mask_step, return_lists=False)
         mask_n=len(list_of_masks)
-        n_mask_pix=int(math.ceil(self.monopix.chip_props["ROW_SIZE"]/(mask_step*1.0)) * len(np.unique([coln[0] for coln in pix], axis=0)) )
+        n_mask_pix=int(math.ceil(self.monopix.chip_props["ROW_SIZE"]/(mask_step*1.0)) * len(np.unique([coln[0] for coln in self.pix], axis=0)) )
 
         # If changed from the initial configuration, set the LSB DAC value.
         if lsb_dac is not None:
@@ -136,7 +134,7 @@ class TuneTHnoise(scan_base.ScanBase):
         tuned_flags = np.invert(np.logical_and(tuned_flags.astype(bool),en_org.astype(bool)))
 
         trim_ref = self.monopix.default_TDAC_mask(limit=True)
-        for col in np.unique([coln[0] for coln in pix], axis=0):
+        for col in np.unique([coln[0] for coln in self.pix], axis=0):
             # Fill the TRIM step sign map (According to its tuning circuitry). 
             if col in self.monopix.chip_props["COLS_TUNING_UNI"]:
                 trim_increase_sign[col,0:self.monopix.chip_props["ROW_SIZE"]] = 1
@@ -208,9 +206,9 @@ class TuneTHnoise(scan_base.ScanBase):
             for mask_i in list(range(mask_n)):
                 occupied_counter=0
                 pix_frommask=list_of_masks[mask_i]
-                for i in range(len(pix)):
-                    if pix_frommask[pix[i][0], pix[i][1]]==1 and en_ref[pix[i][0], pix[i][1]]==1:
-                        if occupancy_map[pix[i][0],pix[i][1]] > occ_target:
+                for i in range(len(self.pix)):
+                    if pix_frommask[self.pix[i][0], self.pix[i][1]]==1 and en_ref[self.pix[i][0], self.pix[i][1]]==1:
+                        if occupancy_map[self.pix[i][0],self.pix[i][1]] > occ_target:
                             occupied_counter=occupied_counter+1
                 self.logger.info("Pixels from mask {0} with occupancy larger than threshold: {1}".format(mask_i, occupied_counter))
                 if debug_flag:
@@ -269,62 +267,11 @@ if __name__ == "__main__":
     parser.add_argument("-nmp","--n_mask_pix",type=int,default=local_configuration["n_mask_pix"])
     parser.add_argument('-ms',"--mask_step", type=int, default=None)
     #parser.add_argument('-injn',"--inj_n_param",type=int,default=local_configuration["inj_n_param"])
-    parser.add_argument("-dout","--output_dir", type=str, default=None)
     
     args=parser.parse_args()
+    args.no_power_reset = not bool(args.power_reset)
     
-    m=monopix2.Monopix2(no_power_reset=not bool(args.power_reset))
-    m.init()
-    if args.config_file is not None:
-        m.load_config(args.config_file)
-
-    m.set_inj_en(pix="none")
-
-    if args.th1 is not None:
-        m.set_th(1,args.th1)
-    if args.th2 is not None:
-        m.set_th(2, args.th2)
-    if args.th3 is not None:
-        m.set_th(3, args.th3)
-
-    if args.flavor is not None:
-        if args.flavor=="all":
-            collist=range(0,m.chip_props["COL_SIZE"])
-            m.logger.info("Enabled: Full matrix")
-        else:
-            tmp=args.flavor.split(":")
-            collist=range(int(tmp[0]),int(tmp[1]))
-            m.logger.info("Enabled: Columns {0:s} to {1:s}".format(tmp[0], tmp[1]))
-
-        pix=[]
-        for i in collist:
-           for j in range(0,m.chip_props["ROW_SIZE"]):               
-               if m.PIXEL_CONF["EnPre"][i,j]!=0:
-                   pix.append([i,j])
-               else:
-                   pass
-    else:
-        pix=[]
-        m.set_preamp_en(m.PIXEL_CONF["EnPre"], overwrite=True)
-        m.set_tdac(m.PIXEL_CONF["Trim"], overwrite=True)
-        
-        for i in range(0,m.chip_props["COL_SIZE"]):
-           for j in range(0,m.chip_props["ROW_SIZE"]):
-               if m.PIXEL_CONF["EnPre"][i,j]!=0:
-                   pix.append([i,j])
-               else:
-                   pass
-
-    if len(pix)>0:
-        local_configuration["pix"]=pix
-    else:
-        pass
-    
-    if args.output_dir is not None:
-        scan = TuneTHnoise(m, fout=args.output_dir, online_monitor_addr="tcp://127.0.0.1:6500")
-    else:        
-        scan = TuneTHnoise(m,online_monitor_addr="tcp://127.0.0.1:6500")
-    
+    scan = TuneTHnoise(**vars(args))
     scan.start(**local_configuration)
     scan.analyze()
     scan.plot(**local_configuration)

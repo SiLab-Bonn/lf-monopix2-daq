@@ -28,8 +28,6 @@ local_configuration={
                      "c_inj": 2.76e-15,                     # Injection capacitance value in F
                      "trim_mask": None,                     # TRIM mask
                      "trim_limit": None,                   # TRIM limit (True: High, False: Lowest, "unbiased": Unbiased)
-                     "pix":[18,25]                          # Single or list of Enabled pixels
-
 }
 
 class ScanThreshold(scan_base.ScanBase):
@@ -55,14 +53,13 @@ class ScanThreshold(scan_base.ScanBase):
         inj_n_param = kwargs.pop('inj_n_param', self.monopix["inj"]["REPEAT"])
         trim_mask = kwargs.pop('trim_mask', None)
         trim_limit = kwargs.pop('trim_limit', None)
-        pix=kwargs.pop('pix',list(np.argwhere(self.monopix.PIXEL_CONF["EnPre"][:,:])))
         debug_flag=False
 
         # Set a hard-coded limit on the maximum  number of pixels injected simultaneously.
         n_mask_pix_limit = 170
 
         # Enable pixels.
-        self.monopix.set_preamp_en(pix)
+        self.monopix.set_preamp_en(self.pix)
 
         # Set the corresponding TRIM DAC mask.
         if trim_mask is None:
@@ -129,17 +126,21 @@ class ScanThreshold(scan_base.ScanBase):
 
         # Determine the number of pixels between the injected pixels for the mask. Limits by the maximum number of injected pixels, if needed.
         if mask_step is not None:    
-            if mask_step < (math.ceil(len(pix)/n_mask_pix_limit)):
-                mask_step = (math.ceil(len(pix)/n_mask_pix_limit))
+            if mask_step < (math.ceil(len(self.pix)/n_mask_pix_limit)):
+                mask_step = (math.ceil(len(self.pix)/n_mask_pix_limit))
             else:
                 pass
         else:
-            mask_step = (math.ceil(len(pix)/n_mask_pix))
+            mask_step = (math.ceil(len(self.pix)/n_mask_pix))
 
         # Create a list of masks to be applied for every injection step.
         list_of_masks=scan_utils.generate_mask(n_cols=self.monopix.chip_props["COL_SIZE"], n_rows=self.monopix.chip_props["ROW_SIZE"], mask_steps=mask_step, return_lists=False)
         mask_n=len(list_of_masks)
-        n_mask_pix=int(math.ceil(self.monopix.chip_props["ROW_SIZE"]/(mask_step*1.0)) * len(np.unique([coln[0] for coln in pix], axis=0)) )
+        n_mask_pix=int(math.ceil(self.monopix.chip_props["ROW_SIZE"]/(mask_step*1.0)) * len(np.unique([coln[0] for coln in self.pix], axis=0)) )
+
+        # Create a list of column based masks, TODO: check which to use
+        list_of_masks=scan_utils.generate_mask_per_column(enabled_columns=np.unique([coln[0] for coln in self.pix]), n_rows=self.monopix.chip_props["ROW_SIZE"], step_size=4, return_lists=False)
+        mask_n=len(list_of_masks)
 
         # Initialize the scan parameter ID counter.
         scan_param_id=0
@@ -182,9 +183,9 @@ class ScanThreshold(scan_base.ScanBase):
                 # Choose the current mask, and enable the corresponding pixels.
                 mask_pix=[]
                 pix_frommask=list_of_masks[mask_i]
-                for i in range(len(pix)):
-                    if pix_frommask[pix[i][0], pix[i][1]]==1:
-                        mask_pix.append(pix[i])
+                for i in range(len(self.pix)):
+                    if pix_frommask[self.pix[i][0], self.pix[i][1]]==1:
+                        mask_pix.append(self.pix[i])
                 self.monopix.set_inj_en(mask_pix, overwrite=True)
                 if disable_noninjected_pixel:
                     self.monopix.set_preamp_en(mask_pix, overwrite=True)
@@ -270,62 +271,11 @@ if __name__ == "__main__":
     parser.add_argument("-nmp","--n_mask_pix",type=int,default=local_configuration["n_mask_pix"])
     parser.add_argument('-ms',"--mask_step", type=int, default=None)
     parser.add_argument('-injn',"--inj_n_param",type=int,default=local_configuration["inj_n_param"])
-    parser.add_argument("-dout","--output_dir", type=str, default=None)
     
     args=parser.parse_args()
+    args.no_power_reset = not bool(args.power_reset)
     
-    m=monopix2.Monopix2(no_power_reset=not bool(args.power_reset))
-    m.init()
-    if args.config_file is not None:
-        m.load_config(args.config_file)
-
-    m.set_inj_en(pix="none")
-
-    if args.th1 is not None:
-        m.set_th(1,args.th1)
-    if args.th2 is not None:
-        m.set_th(2, args.th2)
-    if args.th3 is not None:
-        m.set_th(3, args.th3)
-
-    if args.flavor is not None:
-        if args.flavor=="all":
-            collist=range(0,m.chip_props["COL_SIZE"])
-            m.logger.info("Enabled: Full matrix")
-        else:
-            tmp=args.flavor.split(":")
-            collist=range(int(tmp[0]),int(tmp[1]))
-            m.logger.info("Enabled: Columns {0:s} to {1:s}".format(tmp[0], tmp[1]))
-
-        pix=[]
-        for i in collist:
-           for j in range(0,m.chip_props["ROW_SIZE"]):               
-               if m.PIXEL_CONF["EnPre"][i,j]!=0:
-                   pix.append([i,j])
-               else:
-                   pass
-    else:
-        pix=[]
-        m.set_preamp_en(m.PIXEL_CONF["EnPre"], overwrite=True)
-        m.set_tdac(m.PIXEL_CONF["Trim"], overwrite=True)
-        
-        for i in range(0,m.chip_props["COL_SIZE"]):
-           for j in range(0,m.chip_props["ROW_SIZE"]):
-               if m.PIXEL_CONF["EnPre"][i,j]!=0:
-                   pix.append([i,j])
-               else:
-                   pass
-
-    if len(pix)>0:
-        local_configuration["pix"]=pix
-    else:
-        pass
-    
-    if args.output_dir is not None:
-        scan = ScanThreshold(m, fout=args.output_dir, online_monitor_addr="tcp://127.0.0.1:6500")
-    else:        
-        scan = ScanThreshold(m,online_monitor_addr="tcp://127.0.0.1:6500")
-    
+    scan = ScanThreshold(**vars(args))
     scan.start(**local_configuration)
     scan.analyze()
     scan.plot(**local_configuration)
