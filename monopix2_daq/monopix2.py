@@ -676,8 +676,8 @@ class Monopix2(Dut):
             # print ("col_0", len(bitarray.bitarray(list(mask[dcol*2+1, :]))))
             # print ("col_1", bitarray.bitarray(list(mask[dcol*2, ::-1])))
             # print ("col_1", len(bitarray.bitarray(list(mask[dcol*2, ::-1]))))
-            self['CONF_DC']['Col0'] = bitarray.bitarray(list(mask[dcol*2+1, :]))
-            self['CONF_DC']['Col1'] = bitarray.bitarray(list(mask[dcol*2, ::-1]))
+            self['CONF_DC']['Col0'] = bitarray.bitarray(list(map(int, mask[dcol*2+1, :])))
+            self['CONF_DC']['Col1'] = bitarray.bitarray(list(map(int, mask[dcol*2, ::-1])))
             # print(self['CONF_DC']['Col0'], len(self['CONF_DC']['Col0']))
             # print(self['CONF_DC']['Col1'], len(self['CONF_DC']['Col1']))
             # Data going to the matrix
