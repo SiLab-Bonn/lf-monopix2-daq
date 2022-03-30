@@ -676,8 +676,8 @@ class Monopix2(Dut):
             # print ("col_0", len(bitarray.bitarray(list(mask[dcol*2+1, :]))))
             # print ("col_1", bitarray.bitarray(list(mask[dcol*2, ::-1])))
             # print ("col_1", len(bitarray.bitarray(list(mask[dcol*2, ::-1]))))
-            self['CONF_DC']['Col0'] = bitarray.bitarray(list(map(int, mask[dcol*2+1, :])))
-            self['CONF_DC']['Col1'] = bitarray.bitarray(list(map(int, mask[dcol*2, ::-1])))
+            self['CONF_DC']['Col0'] = bitarray.bitarray(list(mask[dcol*2+1, :]))
+            self['CONF_DC']['Col1'] = bitarray.bitarray(list(mask[dcol*2, ::-1]))
             # print(self['CONF_DC']['Col0'], len(self['CONF_DC']['Col0']))
             # print(self['CONF_DC']['Col1'], len(self['CONF_DC']['Col1']))
             # Data going to the matrix
@@ -732,8 +732,7 @@ class Monopix2(Dut):
                 - Matrix of the same dimensions as the chip
                 - A list of pixels: e.g. pix=[[20,60],[20,61],[20,62]]
         """        
-        mask = np.empty([self.chip_props["COL_SIZE"], self.chip_props["ROW_SIZE"]])
-        mask.fill(np.NaN)
+        mask = np.zeros([self.chip_props["COL_SIZE"], self.chip_props["ROW_SIZE"]], dtype=bool)
         # A string as input: "all" (all 1s) or "none" (all 0s)
         if isinstance(pix, str):
             if pix == "all":
@@ -759,12 +758,12 @@ class Monopix2(Dut):
                             mask[p[0], p[1]] = 1
                         else: 
                             self.logger.info("The listed item {0:s} does not correspond to a valid pixel format.".format(p))
-                            mask.fill(np.NaN)
-                            break
+                            raise ValueError
             else:
                 self.logger.info("No pixels given as input for mask creaton.")
         else:
             self.logger.info("You have not specified a valid input for mask creation. Please check the code documentation.")
+            raise ValueError
         return mask
 
     def set_preamp_en(self, pix="all", EnColRO="auto", Out='autoCMOS', overwrite=False):
