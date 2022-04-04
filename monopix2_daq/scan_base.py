@@ -338,7 +338,13 @@ class ScanBase(object):
             self.pix=[]
             for i in collist:
                 for j in range(0, self.monopix.chip_props["ROW_SIZE"]):
-                    self.pix.append([i,j])
+                    if config_file is not None or self.configuration['bench']['module']['chip']['chip_config'] is not None:
+                        if self.monopix.PIXEL_CONF["EnPre"][i,j]!=0:
+                            self.pix.append([i,j])
+                        else:
+                            pass
+                    else:
+                            self.pix.append([i,j])
         else:
             self.pix=[]
             self.monopix.set_preamp_en(self.monopix.PIXEL_CONF["EnPre"])
