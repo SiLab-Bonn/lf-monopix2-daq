@@ -15,34 +15,30 @@ from monopix2_daq.analysis import plotting
 """
 
 local_configuration={
-    "with_mon": True,                      # Enable Mon/Hit-Or timestamping (640 MHz) in data
-    "inj_lo": 0.2,                         # Fixed value on LF-Monopix2 board for VLo
+    "with_inj": False,                      # Enable Inj timestamping (640 MHz) in data
+    "with_mon": False,                      # Enable Mon/Hit-Or timestamping (640 MHz) in data
+    "inj_lo": 0.2,                          # Fixed value on LF-Monopix2 board for VLo
     "injlist_param": [0.0,0.7,0.005],       # List of injection values to scan [start,end,step]
-    "thlist": None,                        # List of global threshold values [TH1,TH2,TH3]
-    "phaselist_param": None,               # List of phases
-    "n_mask_pix": 170,                       # Maximum number of enabled pixels on every injection/TH step
-    "disable_noninjected_pixel": True,     # A flag to determine if non-injected pixels are disabled while injecting
-    "mask_step": None,                     # Number of pixels between injected pixels in the same column (overwrites n_mask_pix if not None)
-    "inj_n_param": 100,                    # Number of injection pulses per pixel and step
-    "with_calibration": True,              # Determine if calibration is used in the output plots
-    "c_inj": 2.76e-15,                     # Injection capacitance value in F
-    "trim_mask": None,                     # TRIM mask
-    "trim_limit": None,                   # TRIM limit (True: High, False: Lowest, "unbiased": Unbiased)
+    "thlist": None,                         # List of global threshold values [TH1,TH2,TH3]
+    "phaselist_param": None,                # List of phases (None: Single default phase, otherwise [start,end,step])
+    "n_mask_pix": 170,                      # Maximum number of enabled pixels on every injection/TH step
+    "disable_noninjected_pixel": True,      # A flag to determine if non-injected pixels are disabled while injecting
+    "mask_step": None,                      # Number of pixels between injected pixels in the same column (overwrites n_mask_pix if not None)
+    "inj_n_param": 100,                     # Number of injection pulses per pixel and step
+    "trim_mask": None,                      # TRIM mask (None: Go with TRIM limit, 'middle': Middle TRIM)
+    "trim_limit": None,                     # TRIM limit (True: High, False: Lowest, "unbiased": Unbiased)
+    "with_calibration": True,               # Determine if calibration is used in the output plots
+    "c_inj": 2.76e-15,                      # Injection capacitance value in F
 }
 
 class ScanThreshold(scan_base.ScanBase):
     scan_id = "scan_threshold"
 
-    def scan(self, with_mon=True, inj_lo=0.2, injlist_param=[0.0, 0.7, 0.005], thlist=[1.0, 1.0, 1.0], phaselist_param=[0, 16, 1], n_mask_pix=170, mask_step=4, inj_n_param=100, trim_mask=None, trim_limit=None, disable_noninjected_pixel=True, **kwargs):
+    def scan(self, with_inj=False, with_mon=False, inj_lo=0.2, injlist_param=[0.0, 0.7, 0.005], thlist=None, phaselist_param=None, n_mask_pix=170, disable_noninjected_pixel=True, mask_step=None, inj_n_param=100, trim_mask=None, trim_limit=None, **kwargs):
         """
             Execute a threshold scan.
             This script scans the injection amplitude over a chip with fixed DAC settings and fits the results to determine the current effective threshold.  
         """
-        # Load kwargs or default values.
-        with_tlu = kwargs.pop('with_tlu', False)
-        with_inj = kwargs.pop('with_inj', False)
-        with_rx1 = kwargs.pop('with_rx1', False)
-        with_mon = kwargs.pop('with_mon', False)
         debug_flag=False
 
         # Set a hard-coded limit on the maximum  number of pixels injected simultaneously.
@@ -74,14 +70,8 @@ class ScanThreshold(scan_base.ScanBase):
                 self.logger.info('Not a valid DAC setting') 
 
         # Enable timestamps.
-        if with_tlu:
-            tlu_delay = kwargs.pop('tlu_delay', 8)
-            self.monopix.set_tlu(tlu_delay)
-            self.monopix.set_timestamp640(src="tlu")
         if with_inj:
             self.monopix.set_timestamp640(src="inj")
-        if with_rx1:
-            self.monopix.set_timestamp640(src="rx1")
         if with_mon:
             self.monopix.set_timestamp640(src="mon")
 
@@ -221,10 +211,7 @@ class ScanThreshold(scan_base.ScanBase):
             self.analyzed_data_file = a.analyzed_data_file
         return self.analyzed_data_file
 
-    def plot(self, analyzed_data_file=None, **kwargs):        
-        with_calibration = kwargs.pop('with_calibration', False)
-        c_inj = kwargs.pop('c_inj', 2.76e-15)
-
+    def plot(self, with_calibration=True, c_inj=2.76e-15, analyzed_data_file=None, **kwargs):
         if analyzed_data_file is None:
             analyzed_data_file = self.analyzed_data_file
 

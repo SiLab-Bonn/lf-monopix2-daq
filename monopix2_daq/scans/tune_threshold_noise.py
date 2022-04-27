@@ -19,31 +19,25 @@ from tqdm import tqdm
 """
 
 local_configuration={
-    "exp_time": 0.5,
-    "cnt_th": 2,                           # Number of counts in "exp_time" to consider a pixel noisy
-    "thlist": None,                        # List of global threshold values [TH1,TH2,TH3]
-    "phaselist_param": None,               # List of phases
-    "n_mask_pix":170,                       # Maximum number of enabled pixels on every injection/TH step
-    "disable_notenabled_pixel": False,     # A flag to determine if non-injected pixels are disabled while injecting
-    "mask_step": None,                     # Number of pixels between injected pixels in the same column (overwrites n_mask_pix if not None)
-    "with_calibration": True,              # Determine if calibration is used in the output plots
-    "c_inj": 2.76e-15,                     # Injection capacitance value in F
-    "lsb_dac": None,                       # LSB dac value
+    "with_mon": False,                      # Enable Mon/Hit-Or timestamping (640 MHz) in data
+    "exp_time": 0.5,                        # Time that the readout is enabled for data acquisition
+    "cnt_th": 2,                            # Number of counts in "exp_time" to consider a pixel noisy
+    "thlist": None,                         # List of global threshold values [TH1,TH2,TH3]
+    "phaselist_param": None,                # List of phases (None: Single default phase, otherwise [start,end,step])
+    "n_mask_pix":170,                       # Maximum number of enabled pixels on every acquisition step
+    "disable_notenabled_pixel": True,      # A flag to determine if non-injected pixels are disabled while injecting
+    "mask_step": None,                      # Number of pixels between injected pixels in the same column (overwrites n_mask_pix if not None)
+    "lsb_dac": None,                        # LSB dac value
 }
 
 class TuneTHnoise(scan_base.ScanBase):
     scan_id = "tune_threshold_noise"
 
-    def scan(self, exp_time=1.0, cnt_th=4, thlist=[1.0, 1.0, 1.0], phaselist_param=[0, 16, 1], n_mask_pix=170, mask_step=4, lsb_dac=None, disable_notenabled_pixel=False, **kwargs):
+    def scan(self, with_mon=False, exp_time=1.0, cnt_th=4, thlist=None, phaselist_param=None, n_mask_pix=170, disable_notenabled_pixel=True, mask_step=None, lsb_dac=None, **kwargs):
         """
             Execute an injection based tuning scan.
             This script attempts to tune the current enabled pixels TRIM DAC to have a threshold as close as possible to the target injection value.
         """
-        # Load kwargs or default values.
-        with_tlu = kwargs.pop('with_tlu', False)
-        with_inj = kwargs.pop('with_inj', False)
-        with_rx1 = kwargs.pop('with_rx1', False)
-        with_mon = kwargs.pop('with_mon', False)
         debug_flag=False
 
         # Set a hard-coded limit on the maximum  number of pixels injected simultaneously.
@@ -56,14 +50,6 @@ class TuneTHnoise(scan_base.ScanBase):
         self.monopix.set_preamp_en(self.pix, overwrite=True)
 
         # Enable timestamps.
-        if with_tlu:
-            tlu_delay = kwargs.pop('tlu_delay', 8)
-            self.monopix.set_tlu(tlu_delay)
-            self.monopix.set_timestamp640(src="tlu")
-        if with_inj:
-            self.monopix.set_timestamp640(src="inj")
-        if with_rx1:
-            self.monopix.set_timestamp640(src="rx1")
         if with_mon:
             self.monopix.set_timestamp640(src="mon")
         
@@ -152,15 +138,14 @@ class TuneTHnoise(scan_base.ScanBase):
                 pix_frommask=list_of_masks[mask_i]
 
                 # Check if the pixel in the mask is enabled originally.
-                for i in range(len(pix)):
-                    if pix_frommask[pix[i][0], pix[i][1]]==1 and en_ref[pix[i][0], pix[i][1]]==1:
-                        mask_pix.append(pix[i])
+                for i in range(len(self.pix)):
+                    if pix_frommask[self.pix[i][0], self.pix[i][1]]==1 and en_ref[self.pix[i][0], self.pix[i][1]]==1:
+                        mask_pix.append(self.pix[i])
                 if disable_notenabled_pixel:
                     self.monopix.set_preamp_en(mask_pix, overwrite=True)
                     time.sleep(0.1)
-                
-                #if with_mon:
-                #    self.monopix.set_mon_en(mask_pix[0])
+                if with_mon:
+                    self.monopix.set_mon_en(mask_pix[0], overwrite=True)
                 # Reset and clear trash hits before measuring.
                 for _ in range(10):
                     self.monopix["fifo"]["RESET"] 
@@ -173,7 +158,7 @@ class TuneTHnoise(scan_base.ScanBase):
 
                 self.logger.info("Amount of data: {}".format(len(data)))
                 # Disable the pixel masks.
-                #self.monopix.set_mon_en("none")
+                self.monopix.set_mon_en("none")
                 pre_cnt=cnt
                 cnt=self.fifo_readout.get_record_count()
 
@@ -229,10 +214,7 @@ class TuneTHnoise(scan_base.ScanBase):
     def analyze(self, data_file=None, cluster_hits=False, build_events=False, build_events_simple=False):
         pass
 
-    def plot(self, analyzed_data_file=None, **kwargs):        
-        with_calibration = kwargs.pop('with_calibration', False)
-        c_inj = kwargs.pop('c_inj', 2.76e-15)
-
+    def plot(self, analyzed_data_file=None, **kwargs):    
         if analyzed_data_file is None:
             analyzed_data_file = self.output_filename + '.h5'
 

@@ -1,6 +1,6 @@
 # General information
 general:
-  output_directory: "./output_data/" # Top-level output data directory, default is the current folder where the bdaq script is started
+  output_directory: "/home/idcs/silab_devices/lfmonopix2/20220428_timingtests/" # Top-level output data directory, default is the current folder where the script is started
 
 # Connected Module
 module:

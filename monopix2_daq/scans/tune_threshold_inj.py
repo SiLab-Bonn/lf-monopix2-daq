@@ -16,33 +16,27 @@ from monopix2_daq.analysis import plotting
 """
 
 local_configuration={
-    "with_mon": False,                     # Enable Mon/Hit-Or timestamping (640 MHz) in data
-    "inj_lo": 0.2,                         # Fixed value on LF-Monopix2 board for VLo
+    "with_inj": False,                      # Enable Inj timestamping (640 MHz) in data
+    "with_mon": False,                      # Enable Mon/Hit-Or timestamping (640 MHz) in data
+    "inj_lo": 0.2,                          # Fixed value on LF-Monopix2 board for VLo
     "inj_target": 0.258,                    # List of injection values to scan [start,end,step]
-    "thlist": None,                        # List of global threshold values [TH1,TH2,TH3]
-    "phaselist_param": None,               # List of phases
+    "thlist": None,                         # List of global threshold values [TH1,TH2,TH3]
+    "phaselist_param": None,                # List of phases
     "n_mask_pix":170,                       # Maximum number of enabled pixels on every injection/TH step
-    "disable_noninjected_pixel": True,     # A flag to determine if non-injected pixels are disabled while injecting
-    "mask_step": None,                     # Number of pixels between injected pixels in the same column (overwrites n_mask_pix if not None)
-    "inj_n_param": 100,                    # Number of injection pulses per pixel and step
-    "with_calibration": True,              # Determine if calibration is used in the output plots
-    "c_inj": 2.76e-15,                     # Injection capacitance value in F
-    "lsb_dac": None,                       # LSB dac value
+    "disable_noninjected_pixel": True,      # A flag to determine if non-injected pixels are disabled while injecting
+    "mask_step": None,                      # Number of pixels between injected pixels in the same column (overwrites n_mask_pix if not None)
+    "inj_n_param": 100,                     # Number of injection pulses per pixel and step
+    "lsb_dac": None,                        # LSB dac value
 }
 
 class TuneTHinj(scan_base.ScanBase):
     scan_id = "tune_threshold_inj"
 
-    def scan(self, inj_lo=0.2, inj_target=0.275, thlist=[1.0, 1.0, 1.0], phaselist_param=[0, 16, 1], n_mask_pix=170, mask_step=4, inj_n_param=100, lsb_dac=None, disable_noninjected_pixel=False, **kwargs):
+    def scan(self, with_inj=False, with_mon=False, inj_lo=0.2, inj_target=0.275, thlist=None, phaselist_param=None, n_mask_pix=170, disable_noninjected_pixel=True, mask_step=None, inj_n_param=100, lsb_dac=None, **kwargs):
         """
             Execute an injection based tuning scan.
             This script attempts to tune the current enabled pixels TRIM DAC to have a threshold as close as possible to the target injection value.
         """
-        # Load kwargs or default values.
-        with_tlu = kwargs.pop('with_tlu', False)
-        with_inj = kwargs.pop('with_inj', False)
-        with_rx1 = kwargs.pop('with_rx1', False)
-        with_mon = kwargs.pop('with_mon', False)
 
         # Set a hard-coded limit on the maximum  number of pixels injected simultaneously.
         n_mask_pix_limit = 170
@@ -55,14 +49,8 @@ class TuneTHinj(scan_base.ScanBase):
         self.monopix.set_preamp_en(self.pix)
 
         # Enable timestamps.
-        if with_tlu:
-            tlu_delay = kwargs.pop('tlu_delay', 8)
-            self.monopix.set_tlu(tlu_delay)
-            self.monopix.set_timestamp640(src="tlu")
         if with_inj:
             self.monopix.set_timestamp640(src="inj")
-        if with_rx1:
-            self.monopix.set_timestamp640(src="rx1")
         if with_mon:
             self.monopix.set_timestamp640(src="mon")
         
@@ -241,10 +229,7 @@ class TuneTHinj(scan_base.ScanBase):
     def analyze(self, data_file=None, cluster_hits=False, build_events=False, build_events_simple=False):
         pass
 
-    def plot(self, analyzed_data_file=None, **kwargs):        
-        with_calibration = kwargs.pop('with_calibration', False)
-        c_inj = kwargs.pop('c_inj', 2.76e-15)
-
+    def plot(self, analyzed_data_file=None, **kwargs):
         if analyzed_data_file is None:
             analyzed_data_file = self.output_filename + '.h5'
 
