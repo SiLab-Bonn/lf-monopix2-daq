@@ -1140,7 +1140,7 @@ class Monopix2(Dut):
                 self["timestamp_inj"]["ENABLE_EXTERN"] = 0  # although this is connected to gate
                 self["timestamp_inj"]["ENABLE"] = 1
         elif src == "rx1":
-                self["timestamp_rx1"]["INVERT"] = 0
+                self["timestamp_rx1"]["INVERT"] = 1
                 self["timestamp_rx1"]["ENABLE_TRAILING"] = 0
                 self["timestamp_rx1"]["ENABLE_EXTERN"] = 0  # connected to 1'b1
                 self["timestamp_rx1"]["ENABLE"] = 1
