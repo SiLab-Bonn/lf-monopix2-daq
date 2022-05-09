@@ -166,11 +166,13 @@ class ScanThreshold(scan_base.ScanBase):
                 for i in range(len(self.pix)):
                     if pix_frommask[self.pix[i][0], self.pix[i][1]]==1:
                         mask_pix.append(self.pix[i])
+                # Enable monitors and wait a bit, since the setting seems to couple into the CSA output
+                if with_mon:
+                    self.monopix.set_mon_en(mask_pix[0], overwrite=True)
+                    time.sleep(0.02)    
                 self.monopix.set_inj_en(mask_pix, overwrite=True)
                 if disable_noninjected_pixel:
                     self.monopix.set_preamp_en(mask_pix, overwrite=True)
-                if with_mon:
-                    self.monopix.set_mon_en(mask_pix[0], overwrite=True)
                 #mask_pix_tmp=mask_pix
                 #for i in range(n_mask_pix-len(mask_pix)):
                 #    mask_pix_tmp.append([-1,-1])

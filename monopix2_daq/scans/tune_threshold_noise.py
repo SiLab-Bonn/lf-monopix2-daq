@@ -141,11 +141,13 @@ class TuneTHnoise(scan_base.ScanBase):
                 for i in range(len(self.pix)):
                     if pix_frommask[self.pix[i][0], self.pix[i][1]]==1 and en_ref[self.pix[i][0], self.pix[i][1]]==1:
                         mask_pix.append(self.pix[i])
+                # Enable monitors and wait a bit, since the setting seems to couple into the CSA output
+                if with_mon:
+                    self.monopix.set_mon_en(mask_pix[0], overwrite=True)
+                    time.sleep(0.02)    
                 if disable_notenabled_pixel:
                     self.monopix.set_preamp_en(mask_pix, overwrite=True)
                     time.sleep(0.1)
-                if with_mon:
-                    self.monopix.set_mon_en(mask_pix[0], overwrite=True)
                 # Reset and clear trash hits before measuring.
                 for _ in range(10):
                     self.monopix["fifo"]["RESET"] 
