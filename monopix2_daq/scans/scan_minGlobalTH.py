@@ -74,13 +74,13 @@ class ScanMinGlobalTH(scan_base.ScanBase):
                 self.logger.info('Not a valid DAC setting')
 
         # Make useful copies of the original enabled pixel mask.
-        en_org = np.copy(self.monopix.PIXEL_CONF["EnPre"])
         en_current = np.copy(self.monopix.PIXEL_CONF["EnPre"])
         en_ref = np.ones_like(self.monopix.PIXEL_CONF["EnPre"])
+        en_where = np.full_like(en_current, True, dtype=bool)
 
         # Count the total number of masked pixels.
         orig_pix_n = np.array([0, 0, 0])
-        for col_id, cols in enumerate(en_org):
+        for col_id, cols in enumerate(en_current):
             for rows in cols[:]:
                 if rows==1:
                     if col_id in self.monopix.chip_props["COLS_M1"]:
@@ -187,7 +187,11 @@ class ScanMinGlobalTH(scan_base.ScanBase):
                             self.logger.info("Pixels from CSA {0:s} have reached the lowest global TH ({1:.4f} V)".format(str(i+1), th[i]))
                             th[i] -= th_step[i]
                             lowestTH_flag[i] = True
-                            self.logger.info("Increasing the final lowest global TH of CSA {0:s} by {1:.4f} V".format(str(i+1), -th_step[i]))
+                            col_string = "COLS_M{0}".format(str(i+1))
+                            csa_col_list = self.monopix.chip_props[col_string]
+                            for col in csa_col_list:
+                                en_where[col,:]=False
+                            self.logger.info("Increasing the final lowest global TH of CSA {0:s} by {1:.4f} V".format(str(i+1), th_step[i]))
                             self.monopix.set_th(th_id = i+1, th_value = th[i])
                     else:
                         pass
@@ -195,7 +199,7 @@ class ScanMinGlobalTH(scan_base.ScanBase):
                     pass
 
             # Update the current enabled pixel mask with the reference one. 
-            en_current = np.bitwise_and(en_current, en_ref)
+            en_current = np.bitwise_and(en_current, en_ref, where=en_where)
 
         self.monopix.stop_all_data()
 
