@@ -27,6 +27,7 @@
 `include "sram_fifo/sram_fifo_core.v"
 `include "sram_fifo/sram_fifo.v"
 `include "gpio/gpio.v"
+`include "gpio/gpio_core.v"
 `include "rrp_arbiter/rrp_arbiter.v"
 
 `include "utils/bus_to_ip.v"

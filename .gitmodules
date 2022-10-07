@@ -1,7 +1,7 @@
 [submodule "basil"]
 	path = basil
 	url = https://github.com/Silab-Bonn/basil
-	branch = b4e57ec0de799b8ee789660f008f8bd639545e5e
+	branch = eb1c515f80e1dc9ba8d8b84d691a9752fb365331
 [submodule "SiTCP_Netlist_for_Kintex7"]
 	path = SiTCP_Netlist_for_Kintex7
 	url = https://github.com/BeeBeansTechnologies/SiTCP_Netlist_for_Kintex7
