@@ -1,8 +1,3 @@
-# producer_sim : # not yet implemented
-#     MIO3 :
-#         kind : mio3_sim
-#         backend : tcp://127.0.0.1:6500
-
 converter :
     lfmonopix2 :
         kind : lfmonopix2_inter
@@ -15,3 +10,10 @@ receiver :
     lfmonopix2 :
         kind : lfmonopix2_recv
         frontend : tcp://127.0.0.1:6600
+
+# producer_sim:
+#     lfmonopix2 :
+#         kind : silab_default_producer
+#         backend : tcp://127.0.0.1:6500
+#         delay : 0.05
+#         data_file : /home/leloup/git/lf-monopix2-daq/monopix2/online_monitor/20221103_223039_source_scan.h5
