@@ -20,7 +20,7 @@ PROJECT_FOLDER = os.path.dirname(__file__)
 TESTBENCH_DEFAULT_FILE = os.path.join(PROJECT_FOLDER, 'testbench.yaml')
 
 
-def send_data(socket, data, scan_par_id, index_start, index_stop, data_length, name='ReadoutData'):
+def send_data(socket, data, scan_param_id, index_start, index_stop, data_length, name='ReadoutData'):
     '''
     Sends the data of every read out (raw data and meta data) via ZeroMQ to a specified socket.
     Uses a serialization provided by the online_monitor package
@@ -31,7 +31,7 @@ def send_data(socket, data, scan_par_id, index_start, index_stop, data_length, n
         data_length=data_length,
         timestamp_start=data[1],
         timestamp_stop=data[2],
-        scan_par_id=scan_par_id,
+        scan_param_id=scan_param_id,
         error=data[3]
     )
 
@@ -278,7 +278,7 @@ class ScanBase(object):
         self.meta_data_table.flush()
         
         if self.socket:
-            send_data(self.socket, data=data_tuple, scan_par_id=self.scan_param_id,index_start=temp_index, index_stop=total_words, data_length=len_raw_data)
+            send_data(self.socket, data=data_tuple, scan_param_id=self.scan_param_id,index_start=temp_index, index_stop=total_words, data_length=len_raw_data)
 
     def handle_err(self, exc):
         '''
