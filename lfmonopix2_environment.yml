@@ -1,6 +1,5 @@
 name: lfmonopix2
 dependencies:
-  - python=3.6
   - numpy
   - pyyaml
   - bitarray
@@ -29,7 +28,6 @@ dependencies:
   - jupyter
   - pip
   - notebook
-  - math
   - pip:
     - tables
     - progressbar-latest

@@ -19,7 +19,7 @@ This repository contains a firmware and Python3-based DAQ software required to o
     
     - **If you want to add the packages to your default installation or an environment you already created**, install the suggested packages by running the following commands:
 
-        ``$ conda install numpy pyyaml bitarray six cython scipy numba matplotlib future numexpr dill numpydoc tqdm mock nose pyqtgraph pyserial pyzmq contextlib2 psutil testfixtures qtpy zeromq pyqtgraph math tqdm pyqt jupyter notebook``
+        ``$ conda install numpy pyyaml bitarray six cython scipy numba matplotlib future numexpr dill numpydoc tqdm mock nose pyqtgraph pyserial pyzmq contextlib2 psutil testfixtures qtpy zeromq pyqtgraph tqdm pyqt jupyter notebook``
         
         ``$ pip install tables progressbar-latest pyvisa-py pyvisa``
 
