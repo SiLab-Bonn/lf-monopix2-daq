@@ -98,9 +98,6 @@ class ScanThreshold(scan_base.ScanBase):
         # Create an array with all phases for every corresponding injection.
         inj_th_phase = np.reshape(np.stack(np.meshgrid(injlist,phaselist),axis=2),[-1,2])
 
-        # Make a useful copy of the original enabled pixel mask.
-        en_org = np.copy(self.monopix.PIXEL_CONF["EnPre"])
-
         # Maybe not necessary
         # mask_n=int((len(pix)-0.5)/n_mask_pix+1)
 
@@ -156,6 +153,11 @@ class ScanThreshold(scan_base.ScanBase):
                 self.monopix.set_inj_all(inj_high=inj_high, inj_n=inj_n_param, ext_trigger=False)
 
             cnt=0
+            # Reset and clear trash hits before injecting.
+            for _ in range(10):
+                self.monopix["fifo"]["RESET"]
+                time.sleep(0.002)
+
             # Go through the masks.
             for mask_i in range(mask_n):
                 self.monopix.set_preamp_en("none")
@@ -202,7 +204,7 @@ class ScanThreshold(scan_base.ScanBase):
         self.monopix.stop_all_data() 
         
         # Enable all originally enabled pixels.
-        self.monopix.set_preamp_en(en_org)
+        self.monopix.set_preamp_en(self.pix)
 
     def analyze(self, data_file=None, cluster_hits=False, build_events=False, build_events_simple=False):
         if data_file is None:
