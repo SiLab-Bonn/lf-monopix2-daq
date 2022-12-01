@@ -124,13 +124,11 @@ class ScanMinGlobalTH(scan_base.ScanBase):
 
             # Shift global THs if you have not reached the limit.
             for i, n in enumerate(th):
+                if (n <= th_stop[i]):
+                    lowestTH_flag[i] == True
                 if (lowestTH_flag[i] == False):
                     th[i] += th_step[i]
                     self.monopix.set_th(th_id = i+1, th_value = th[i])
-                elif (n <= th_stop[i]):
-                    lowestTH_flag[i] == True
-                else:    
-                    pass
             self.monopix.set_preamp_en(en_current, overwrite=True)
 
             # Enable read-out for the corresponding exposure time.
