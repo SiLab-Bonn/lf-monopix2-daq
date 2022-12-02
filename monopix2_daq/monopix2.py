@@ -832,7 +832,7 @@ class Monopix2(Dut):
         self._write_pixel_mask(bit="EnMonitor", mask=mask, overwrite=overwrite)
       
         arg = np.argwhere(self.PIXEL_CONF["EnMonitor"][:, :])
-        self.logger.info("Enabling Monitor for {0:d} pixels:  {1:s}".format(len(arg), str(arg).replace("\n", " ")))
+        self.logger.debug("Enabling Monitor for {0:d} pixels:  {1:s}".format(len(arg), str(arg).replace("\n", " ")))
 
     def set_inj_en(self, pix="none", overwrite=False):
         """
@@ -872,9 +872,9 @@ class Monopix2(Dut):
         mask = np.copy(self.PIXEL_CONF["Trim"])
         if isinstance(tdac, int):
             mask.fill(tdac)
-            self.logger.info("Setting a single TDAC/TRIM value to all pixels: {0:s}".format(str(tdac)))
+            self.logger.debug("Setting a single TDAC/TRIM value to all pixels: {0:s}".format(str(tdac)))
         elif np.shape(tdac) == np.shape(mask):
-            self.logger.info("Setting a TDAC matrix of valid dimensions.")
+            self.logger.debug("Setting a TDAC matrix of valid dimensions.")
             mask = np.array(tdac, dtype=np.uint8)
         else:
             self.logger.error("The input tdac parameter must be int or array of size [{0:d},{1:d}]".format(self.chip_props["COL_SIZE"], self.chip_props["ROW_SIZE"]))
@@ -1171,7 +1171,8 @@ class Monopix2(Dut):
         self["timestamp_{0:s}".format(src)]["ENABLE_EXTERN"] = 0
         self["timestamp_{0:s}".format(src)]["ENABLE"]=0
         lost_cnt=self["timestamp_{0:s}".format(src)]["LOST_COUNT"]
-        self.logger.info("640 MHz sampling disabled for: timestamp_{0:s} (lost_cnt={1:d})".format(src, lost_cnt))
+        if lost_cnt > 0:
+            self.logger.warning("640 MHz sampling disabled for: timestamp_{0:s} (lost_cnt={1:d})".format(src, lost_cnt))
 
     def stop_all_data(self):
         """

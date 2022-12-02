@@ -1,9 +1,7 @@
-import os,sys,time
-import numpy as np
-import bitarray
-import tables as tb
-import yaml
+import time
 import math
+import numpy as np
+from tqdm import tqdm
 
 import monopix2_daq.scan_base as scan_base
 import monopix2_daq.analysis.interpreter as interpreter
@@ -129,7 +127,8 @@ class TuneTHinj(scan_base.ScanBase):
                 trim_increase_sign[col,0:self.monopix.chip_props["ROW_SIZE"]] = -1
         self.monopix.set_tdac(trim_ref, overwrite=True)
 
-        # Run the tuning logic with binary search. 
+        # Run the tuning logic with binary search.
+        pbar = tqdm(total=len(tune_steps) * mask_n, unit=' Masks')
         cnt=0
         for scan_param_id, t_step in enumerate(tune_steps):
             data=np.array([],dtype=np.int32)
@@ -137,7 +136,7 @@ class TuneTHinj(scan_base.ScanBase):
             self.monopix.set_monoread()
             # Go through the masks.
             for mask_i in range(mask_n):
-                self.logger.info('Injecting: Mask {0}, aiming to tune to Injection {1:.3f}V'.format(scan_param_id,inj_target))
+                self.logger.debug('Injecting: Mask {0}, aiming to tune to Injection {1:.3f}V'.format(scan_param_id,inj_target))
                 mask_pix=[]
                 pix_frommask=list_of_masks[mask_i]
                 # Check if the pixel in the mask is enabled originally.
@@ -167,6 +166,7 @@ class TuneTHinj(scan_base.ScanBase):
                 self.monopix.set_mon_en("none")
                 self.monopix.set_preamp_en("none")
                 self.monopix.set_inj_en("none")
+                pbar.update(1)
                 
             # Stop read-out.
             self.monopix.stop_monoread()
@@ -213,7 +213,7 @@ class TuneTHinj(scan_base.ScanBase):
             """
 
             pre_cnt=cnt
-            self.logger.info('mask=%d pix=%s data=%d'%(mask_i,str(mask_pix),cnt-pre_cnt))
+            self.logger.debug('mask=%d pix=%s data=%d'%(mask_i,str(mask_pix),cnt-pre_cnt))
             time.sleep(0.1)
             pre_cnt=cnt
             cnt=self.fifo_readout.get_record_count()
@@ -222,6 +222,7 @@ class TuneTHinj(scan_base.ScanBase):
             self.monopix.set_tdac(trim_ref, overwrite=True)
             self.monopix.set_preamp_en(en_ref)
 
+        pbar.close()
         # Update the TDAC and enable again all the original pixels.
         trim_ref = best_results_map[:, :, 0]
         self.monopix.set_tdac(trim_ref, overwrite=True)
