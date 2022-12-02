@@ -108,16 +108,16 @@ class ScanMinGlobalTH(scan_base.ScanBase):
         
         # Shift global THs and look for noisy pixels.
         while (lowestTH_flag.all() == False):
-            self.logger.info("----- Shifting global thresholds and checking for noisy pixels -----")
-            self.logger.info("Current global thresholds: CSA 1 ({0:.4f} V, Lowest: {1}) | CSA 2 ({2:.4f} V, Lowest: {3}) | CSA 3 ({4:.4f} V, Lowest: {5})".format(
+            self.logger.debug("----- Shifting global thresholds and checking for noisy pixels -----")
+            self.logger.debug("Current global thresholds: CSA 1 ({0:.4f} V, Lowest: {1}) | CSA 2 ({2:.4f} V, Lowest: {3}) | CSA 3 ({4:.4f} V, Lowest: {5})".format(
                 th[0], lowestTH_flag[0], 
                 th[1], lowestTH_flag[1], 
                 th[2], lowestTH_flag[2]))
-            self.logger.info("Noisy pixels in: CSA 1 ({0} / {1}) | CSA 2 ({2} / {3}) | CSA 3 ({4} / {5})".format(
+            self.logger.debug("Noisy pixels in: CSA 1 ({0} / {1}) | CSA 2 ({2} / {3}) | CSA 3 ({4} / {5})".format(
                 current_noisy[0],masked_pixel_limit[0],
                 current_noisy[1],masked_pixel_limit[1],
                 current_noisy[2],masked_pixel_limit[2]))
-            self.logger.info("Current global threshold steps for: CSA 1 ({0} V) | CSA 2 ({1} V) | CSA 3 ({2} V)".format(
+            self.logger.debug("Current global threshold steps for: CSA 1 ({0} V) | CSA 2 ({1} V) | CSA 3 ({2} V)".format(
                 th_step[0],
                 th_step[1],
                 th_step[2]))

@@ -43,7 +43,7 @@ class Monopix2(Dut):
         """
 
         # Initialize logger.
-        self.logger = logging.getLogger()
+        self.logger = logging.getLogger(name="LF-Monopix2")
         logFormatter = logging.Formatter("%(asctime)s [%(levelname)-5.5s] [%(threadName)-10s] [%(filename)-15s] [%(funcName)-15s] %(message)s")
         fname = mk_fname(ext="log.log")
         fileHandler = logging.FileHandler(fname)
@@ -306,7 +306,7 @@ class Monopix2(Dut):
                 self[k].set_voltage(kwarg[k], unit='V')
                 self.SET_VALUE[k]=kwarg[k]
                 feedback=[self[k].get_voltage(unit='V'), self[k].get_current(unit='mA')]
-                self.logger.info("Set {0:s}={1:.4f} V | Read {2:s}={3:.4f} V ({4:.4f} mA)".format(k, kwarg[k], k, feedback[0], feedback[1]))
+                self.logger.debug("Set {0:s}={1:.4f} V | Read {2:s}={3:.4f} V ({4:.4f} mA)".format(k, kwarg[k], k, feedback[0], feedback[1]))
             else:
                 self.logger.info("{0:s} is not a defined as valid voltage source.".format(k))
 
@@ -458,7 +458,7 @@ class Monopix2(Dut):
         self.SET_VALUE['INJ_HI']=VHi
         self['INJ_LO'].set_voltage(VHi, unit='V')
         self.SET_VALUE['INJ_LO']=VHi
-        self.logger.info("VHi set to {0:.4f} V".format(VHi))
+        self.logger.debug("VHi set to {0:.4f} V".format(VHi))
 
     def set_inj_all(self, inj_high=0.6,
                     inj_n=100, inj_width=15000, inj_delay=10000, 
@@ -503,7 +503,7 @@ class Monopix2(Dut):
         self["inj"]["EN"] = ext_trigger
         
         # Logs the corresponding injection values.
-        self.logger.info("Configuring injection: VHi:{0:.4f}, VLo:{1:s}, REPEAT:{2:d}, DELAY:{3:d}, WIDTH:{4:d}, PHASE:{5:d}, External Trigger:{6:d}".format(
+        self.logger.debug("Configuring injection: VHi:{0:.4f}, VLo:{1:s}, REPEAT:{2:d}, DELAY:{3:d}, WIDTH:{4:d}, PHASE:{5:d}, External Trigger:{6:d}".format(
         self.SET_VALUE['INJ_HI'], "Set on board", self["inj"]["REPEAT"], self["inj"]["DELAY"], self["inj"]["WIDTH"], inj_phase_des, self["inj"]["EN"]))
 
     def start_inj(self):
@@ -511,7 +511,7 @@ class Monopix2(Dut):
         Starts injection into the chip.
         """
         # Starts injection into the chip.
-        self.logger.info("Injecting with parameters: VHi:{0:.4f}, VLo:{1:s}, REPEAT:{2:d}, DELAY:{3:d}, WIDTH:{4:d}, External Trigger:{5:d}".format(
+        self.logger.debug("Injecting with parameters: VHi:{0:.4f}, VLo:{1:s}, REPEAT:{2:d}, DELAY:{3:d}, WIDTH:{4:d}, External Trigger:{5:d}".format(
         self.SET_VALUE['INJ_HI'], "Set on board", self["inj"]["REPEAT"], self["inj"]["DELAY"], self["inj"]["WIDTH"], self["inj"]["EN"]))
         self["inj"].start()
         while self["inj"].is_done() != 1:
@@ -857,7 +857,7 @@ class Monopix2(Dut):
         self._write_pixel_mask(bit="EnInj",mask=mask, overwrite=overwrite)
         
         arg = np.argwhere(self.PIXEL_CONF["EnInj"][:,:])
-        self.logger.info("Enabling Injection for {0:d} pixels: {1:s}".format(len(arg), str(arg).replace("\n", " ")))
+        self.logger.debug("Enabling Injection for {0:d} pixels: {1:s}".format(len(arg), str(arg).replace("\n", " ")))
         
     def set_tdac(self, tdac, overwrite=False):
         #TODO: Maybe better to make this function write all the bit masks only after all four have been changed, and not one by one. 
@@ -1055,7 +1055,7 @@ class Monopix2(Dut):
         #Read-out trash data from the chip
         self['data_rx'].set_en(True)
         time.sleep(0.2)
-        self.logger.info('Setting Monopix Read-out: start_freeze={0:d} start_read={1:d} stop_read={2:0} stop_freeze={3:0} stop={4:0} reset_fifo={5:0}'.format(
+        self.logger.debug('Setting Monopix Read-out: start_freeze={0:d} start_read={1:d} stop_read={2:0} stop_freeze={3:0} stop={4:0} reset_fifo={5:0}'.format(
                      start_freeze, start_read, stop_read, stop_freeze, stop, self['fifo'].get_FIFO_SIZE()))
         # Reset FIFO
         self["fifo"]["RESET"]   # If 'fifo' type: sitcp_fifo 
@@ -1075,7 +1075,7 @@ class Monopix2(Dut):
         if lost_cnt != 0:
             self.logger.warning("Stopping Monopix Read-out: lost_cnt={0:d}".format(lost_cnt))
         #exp=self["data_rx"]["EXPOSURE_TIME"]
-        self.logger.info("Stopping Monopix Read-out: lost_cnt={0:d}".format(lost_cnt))
+        self.logger.debug("Stopping Monopix Read-out: lost_cnt={0:d}".format(lost_cnt))
         self['CONF']['Rst'] = 1
         self['CONF']['ResetBcid'] = 1
         self['CONF']['ClkOut'] = 0

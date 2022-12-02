@@ -39,7 +39,6 @@ class ScanThreshold(scan_base.ScanBase):
             Execute a threshold scan.
             This script scans the injection amplitude over a chip with fixed DAC settings and fits the results to determine the current effective threshold.  
         """
-        debug_flag=False
 
         # Set a hard-coded limit on the maximum  number of pixels injected simultaneously.
         n_mask_pix_limit = 170
@@ -161,7 +160,7 @@ class ScanThreshold(scan_base.ScanBase):
             # Go through the masks.
             for mask_i in range(mask_n):
                 self.monopix.set_preamp_en("none")
-                self.logger.info('Injecting: Mask {0}, from {1:.3f} to {2:.3f} V'.format(scan_param_id,injlist[0], injlist[-1]))
+                self.logger.debug('Injecting: Mask {0}, from {1:.3f} to {2:.3f} V'.format(scan_param_id,injlist[0], injlist[-1]))
                 # Choose the current mask, and enable the corresponding pixels.
                 mask_pix=[]
                 pix_frommask=list_of_masks[mask_i]
@@ -188,8 +187,7 @@ class ScanThreshold(scan_base.ScanBase):
                     time.sleep(0.05)
                     pre_cnt=cnt
 
-            if debug_flag:
-                self.logger.info('mask=%d pix=%s data=%d'%(mask_i,str(mask_pix),cnt-pre_cnt))
+            self.logger.debug('mask=%d pix=%s data=%d'%(mask_i,str(mask_pix),cnt-pre_cnt))
             
             # Increase scan parameter ID counter.
             scan_param_id=scan_param_id+1
