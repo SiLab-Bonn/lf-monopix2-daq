@@ -94,7 +94,7 @@ class FifoReadout(object):
         if self._is_running:
             raise RuntimeError('Readout already running: use stop() before start()')
         self._is_running = True
-        logging.info('Starting FIFO readout...')
+        logging.debug('Starting FIFO readout...')
         self.callback = callback
         self.errback = errback
         self.fill_buffer = fill_buffer
@@ -137,7 +137,7 @@ class FifoReadout(object):
                 if timeout:
                     raise StopTimeout('FIFO stop timeout after %0.1f second(s)' % timeout)
                 else:
-                    logging.warning('FIFO stop timeout')
+                    logging.debug('FIFO stop timeout')
         except StopTimeout as e:
             if self.errback:
                 self.errback(sys.exc_info())
@@ -151,7 +151,7 @@ class FifoReadout(object):
             self.worker_thread.join()
         self.callback = None
         self.errback = None
-        logging.info('Stopped FIFO readout')
+        logging.debug('Stopped FIFO readout')
 
     def print_readout_status(self):
         ret = self.get_discard_count()

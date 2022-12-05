@@ -1,8 +1,6 @@
-import os,sys,time
+import time
 import numpy as np
-import bitarray
-import tables as tb
-import yaml
+from tqdm import tqdm
 
 import monopix2_daq.scan_base as scan_base
 import monopix2_daq.analysis.interpreter as interpreter
@@ -106,18 +104,19 @@ class ScanMinGlobalTH(scan_base.ScanBase):
         # Initialize a counter of the number of noisy pixels.
         current_noisy = np.array([0, 0, 0])
         
+        pbar = tqdm(total=(th_start[0] - th_stop[0]) / np.abs(th_step[0]), unit=' Voltage steps')
         # Shift global THs and look for noisy pixels.
         while (lowestTH_flag.all() == False):
-            self.logger.info("----- Shifting global thresholds and checking for noisy pixels -----")
-            self.logger.info("Current global thresholds: CSA 1 ({0:.4f} V, Lowest: {1}) | CSA 2 ({2:.4f} V, Lowest: {3}) | CSA 3 ({4:.4f} V, Lowest: {5})".format(
+            self.logger.debug("----- Shifting global thresholds and checking for noisy pixels -----")
+            self.logger.debug("Current global thresholds: CSA 1 ({0:.4f} V, Lowest: {1}) | CSA 2 ({2:.4f} V, Lowest: {3}) | CSA 3 ({4:.4f} V, Lowest: {5})".format(
                 th[0], lowestTH_flag[0], 
                 th[1], lowestTH_flag[1], 
                 th[2], lowestTH_flag[2]))
-            self.logger.info("Noisy pixels in: CSA 1 ({0} / {1}) | CSA 2 ({2} / {3}) | CSA 3 ({4} / {5})".format(
+            self.logger.debug("Noisy pixels in: CSA 1 ({0} / {1}) | CSA 2 ({2} / {3}) | CSA 3 ({4} / {5})".format(
                 current_noisy[0],masked_pixel_limit[0],
                 current_noisy[1],masked_pixel_limit[1],
                 current_noisy[2],masked_pixel_limit[2]))
-            self.logger.info("Current global threshold steps for: CSA 1 ({0} V) | CSA 2 ({1} V) | CSA 3 ({2} V)".format(
+            self.logger.debug("Current global threshold steps for: CSA 1 ({0} V) | CSA 2 ({1} V) | CSA 3 ({2} V)".format(
                 th_step[0],
                 th_step[1],
                 th_step[2]))
@@ -158,6 +157,7 @@ class ScanMinGlobalTH(scan_base.ScanBase):
                 pass
             # Make a reference mask where the pixels which have reached the limit occupancy are masked.
             en_ref = np.bitwise_and(en_ref, plot2d <= cnt_th)
+            pbar.update(1)
 
             # Check if the occupancy of pixels with hits corresponds to the limit value.
             for i, n in enumerate(th):
@@ -191,14 +191,11 @@ class ScanMinGlobalTH(scan_base.ScanBase):
                                 en_where[col,:]=False
                             self.logger.info("Increasing the final lowest global TH of CSA {0:s} by {1:.4f} V".format(str(i+1), th_step[i]))
                             self.monopix.set_th(th_id = i+1, th_value = th[i])
-                    else:
-                        pass
-                else:
-                    pass
 
             # Update the current enabled pixel mask with the reference one. 
             en_current = np.bitwise_and(en_current, en_ref, where=en_where)
 
+        pbar.close()
         self.monopix.stop_all_data()
 
         # Log final results. 

@@ -94,7 +94,8 @@ class ScanBase(object):
         self.output_filename = os.path.join(self.working_dir, self.run_name)
         
         # Initialize logger
-        self.logger = logging.getLogger()
+        self.logger = logging.getLogger(name="LF-Monopix2")
+        self.logger.setLevel(logging.INFO)
         for l in self.logger.handlers:
             if isinstance(l, logging.FileHandler):
                dut_logger_filename=l.baseFilename

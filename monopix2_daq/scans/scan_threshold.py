@@ -1,9 +1,7 @@
-import os,sys,time
-import numpy as np
-import bitarray
-import tables as tb
-import yaml
+import time
 import math
+import numpy as np
+from tqdm import tqdm
 
 import monopix2_daq.scan_base as scan_base
 import monopix2_daq.analysis.scan_utils as scan_utils
@@ -39,7 +37,6 @@ class ScanThreshold(scan_base.ScanBase):
             Execute a threshold scan.
             This script scans the injection amplitude over a chip with fixed DAC settings and fits the results to determine the current effective threshold.  
         """
-        debug_flag=False
 
         # Set a hard-coded limit on the maximum  number of pixels injected simultaneously.
         n_mask_pix_limit = 170
@@ -135,6 +132,7 @@ class ScanThreshold(scan_base.ScanBase):
         # Start Read-out.
         self.monopix.set_monoread()
 
+        pbar = tqdm(total=len(inj_th_phase) * mask_n, unit=' Masks')
         # Scan over injection steps and record the corresponding hits.
         for inj, phase in inj_th_phase.tolist():
             # Calculate INJ_HI to the desired value, while taking into account the INJ_LO defined in the board.
@@ -161,7 +159,7 @@ class ScanThreshold(scan_base.ScanBase):
             # Go through the masks.
             for mask_i in range(mask_n):
                 self.monopix.set_preamp_en("none")
-                self.logger.info('Injecting: Mask {0}, from {1:.3f} to {2:.3f} V'.format(scan_param_id,injlist[0], injlist[-1]))
+                self.logger.debug('Injecting: Mask {0}, from {1:.3f} to {2:.3f} V'.format(scan_param_id,injlist[0], injlist[-1]))
                 # Choose the current mask, and enable the corresponding pixels.
                 mask_pix=[]
                 pix_frommask=list_of_masks[mask_i]
@@ -187,9 +185,9 @@ class ScanThreshold(scan_base.ScanBase):
                     self.monopix.start_inj()
                     time.sleep(0.05)
                     pre_cnt=cnt
+                pbar.update(1)
 
-            if debug_flag:
-                self.logger.info('mask=%d pix=%s data=%d'%(mask_i,str(mask_pix),cnt-pre_cnt))
+            self.logger.debug('mask=%d pix=%s data=%d'%(mask_i,str(mask_pix),cnt-pre_cnt))
             
             # Increase scan parameter ID counter.
             scan_param_id=scan_param_id+1
@@ -200,6 +198,7 @@ class ScanThreshold(scan_base.ScanBase):
             pre_cnt=cnt
             cnt=self.fifo_readout.get_record_count()
 
+        pbar.close()
         # Stop read-out and timestamps.
         self.monopix.stop_all_data() 
         
