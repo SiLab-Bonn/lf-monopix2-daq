@@ -1,8 +1,5 @@
-import os,sys,time
-import numpy as np
-import bitarray
-import tables as tb
-import yaml
+import time
+from tqdm import tqdm
 
 import monopix2_daq.scan_base as scan_base
 from monopix2_daq.analysis import analysis_dataproc
@@ -49,38 +46,34 @@ class ScanSource(scan_base.ScanBase):
             self.monopix.set_timestamp640(src="rx1")
         if with_mon:
             self.monopix.set_timestamp640(src="mon")
-        
+
         # Start Read-out.
         self.monopix.set_monoread()
-        
+        self.logger.info("***** %s is running ***** Don't forget to start the TLU *****"%self.__class__.__name__)
+
         with self.readout(scan_param_id=0, fill_buffer=False, clear_buffer=True, readout_interval=0.2, timeout=0):
-            
+
+            pbar = tqdm(total=scan_time, unit='seconds')
             # Record the initial time.
             t_0 = time.time()
 
-            self.logger.info("***** %s is running ***** Don't forget to start the TLU *****"%self.__class__.__name__)
-
             # Monitor the scan time while acquiring data.
-            while True:
+            while time.time() - t_0 < scan_time:
+                time.sleep(1)
                 pre_cnt = cnt
                 cnt = self.fifo_readout.get_record_count()
                 pre_scanned = scanned
-                scanned = time.time()-t_0
-                self.logger.info('Elapsed time = {0:.0f}s dat = {1} rate={2:.3f}k/s'.format(scanned,cnt,(cnt-pre_cnt)/(scanned-pre_scanned)/1024))
-                time_step=1
-                if scanned + time_step > scan_time and scan_time > 0:
-                    break
-                elif scanned < 30:
-                    time.sleep(time_step)
-                else:
-                    time_step=10
-                    time.sleep(time_step)
+                scanned = time.time() - t_0
+                data_rate = (cnt - pre_cnt) / (scanned - pre_scanned) / 1024
+                self.logger.debug('Elapsed time = {0:.0f}s dat = {1} rate={2:.3f}k/s'.format(scanned, cnt, data_rate))
+                pbar.set_postfix_str('Dat: {0:9} | Rate: {1:.2f}k/s'.format(cnt, data_rate))
+                pbar.update(1)
 
-            time.sleep(max(0,scan_time-scanned))
-                  
+        pbar.close()
         # Stop Read-out and timestamps.
         self.monopix.stop_all_data()
-    
+        self.logger.info("Mean data rate over {0}s was {1:.2f}k/s".format(scan_time, cnt / scan_time / 1024))
+
     def analyze(self, data_file=None, cluster_hits=False, build_events=False, build_events_simple=False):
         if data_file is None:
             data_file = self.output_filename + '.h5'
