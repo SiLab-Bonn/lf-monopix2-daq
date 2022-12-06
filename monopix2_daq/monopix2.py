@@ -414,7 +414,7 @@ class Monopix2(Dut):
                         th_dict={th_string: th_value[th_pos]}
                         self.set_global_voltage(**th_dict)
                     else:
-                        raise ValueError("*{0}* is not a valid Threshold ID. (Only 1, 2 or 3 are valid)".format(th_id))
+                        raise ValueError("*{0}* is not a valid Threshold ID. (Only 1, 2 or 3 are valid)".format(th_iter))
             else:
                 raise TypeError("The number of threshold values does not match the number of threshold IDs.")
         else:
