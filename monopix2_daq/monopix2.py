@@ -268,7 +268,7 @@ class Monopix2(Dut):
                 feedback=[self[k].get_voltage(unit='V'), self[k].get_current(unit='mA')]
                 self.logger.info("Set {0:s}={1:.4f} V | Read {2:s}={3:.4f} V ({4:.4f} mA)".format(k, kwarg[k], k, feedback[0], feedback[1]))
             else:
-                self.logger.info("{0:s} is not defined as a valid power domain.".format(k))
+                raise NameError("{0:s} is not defined as a valid power domain.".format(k))
 
     def disable_global_power(self, pwr_str=""):
         """
@@ -287,9 +287,9 @@ class Monopix2(Dut):
                 feedback=[self[pwr_str].get_voltage(unit='V'), self[pwr_str].get_current(unit='mA')]
                 self.logger.info("{0:s} DISABLED | Read {1:s}={2:.4f} V ({3:.4f} mA)".format(pwr_str, pwr_str, feedback[0], feedback[1]))
             else:
-                self.logger.info("{0:s} is not defined as a valid power domain.".format(pwr_str))
+                raise NameError("{0:s} is not defined as a valid power domain.".format(pwr_str))
         else:
-            self.logger.info("Your parameter must be the name (string) of a valid power domain.")
+            raise TypeError("Your parameter must be the name (string) of a valid power domain.")
 
     def set_global_voltage(self,**kwarg):
         """
@@ -308,7 +308,7 @@ class Monopix2(Dut):
                 feedback=[self[k].get_voltage(unit='V'), self[k].get_current(unit='mA')]
                 self.logger.debug("Set {0:s}={1:.4f} V | Read {2:s}={3:.4f} V ({4:.4f} mA)".format(k, kwarg[k], k, feedback[0], feedback[1]))
             else:
-                self.logger.info("{0:s} is not a defined as valid voltage source.".format(k))
+                raise NameError("{0:s} is not a defined as valid voltage source.".format(k))
 
     def set_global_current(self,**kwarg):
         """
@@ -327,7 +327,7 @@ class Monopix2(Dut):
                 feedback=[self[k].get_current(unit='uA'), self[k].get_voltage(unit='V')]
                 self.logger.info("Set {0:s}={1:.4f} uA | Read {2:s}={3:.4f} uA ({4:.4f} V)".format(k, kwarg[k], k, feedback[0], feedback[1]))
             else:
-                self.logger.info("{0:s} is not a defined as valid current source.".format(k))
+                raise NameError("{0:s} is not a defined as valid current source.".format(k))
 
     def power_status(self, log=False):
         """
@@ -400,25 +400,25 @@ class Monopix2(Dut):
             Single float or list of floats corresponding to valid Threshold values (in Volts).
         """
         if isinstance(th_id, int):
-            if th_id>0 and th_id<4:
+            if th_id > 0 and th_id < 4:
                 th_string="TH"+str(th_id)
                 th_dict={th_string: th_value}
                 self.set_global_voltage(**th_dict)
             else:
-                self.logger.info("*{0}* is not a valid Threshold ID. (Only 1, 2 or 3 are valid)".format(th_id))
+                raise ValueError("*{0}* is not a valid Threshold ID. (Only 1, 2 or 3 are valid)".format(th_id))
         elif isinstance(th_id, (list, tuple, np.ndarray)) and len(th_id)>0:
-            if len(th_id)==len(th_value):
+            if len(th_id) == len(th_value):
                 for th_pos, th_iter in enumerate(th_id):
-                    if isinstance(th_iter, int) and th_iter>0 and th_iter<4:
+                    if isinstance(th_iter, int) and th_iter > 0 and th_iter < 4:
                         th_string="TH"+str(th_iter)
                         th_dict={th_string: th_value[th_pos]}
                         self.set_global_voltage(**th_dict)
                     else:
-                        self.logger.info("*{0}* is not a valid Threshold ID. (Only 1, 2 or 3 are valid)".format(th_iter))  
+                        raise ValueError("*{0}* is not a valid Threshold ID. (Only 1, 2 or 3 are valid)".format(th_id))
             else:
-                self.logger.info("The number of threshold values does not match the number of threshold IDs.")       
+                raise TypeError("The number of threshold values does not match the number of threshold IDs.")
         else:
-            self.logger.info("The input was incorrect. It must be either: 1. An integer TH ID and a value, or 2. A list of TH IDs and list of values.") 
+            raise TypeError("The input was incorrect. It must be either: 1. An integer TH ID and a value, or 2. A list of TH IDs and list of values.")
 
     def get_th(self):
         """
@@ -559,14 +559,11 @@ class Monopix2(Dut):
                         if kwarg[k]==1:
                             for mon_id in mon_dac_list:
                                 self["CONF_SR"][mon_id]=0
-                        else:
-                            pass
                         self["CONF_SR"][k]=kwarg[k]
                         #self._write_global_conf()
                         flag_last_mon=k
                     else:
-                        self.logger.info("The monitor you tried to set ({0}) is not in the provided monitor list.".format(k))
-                        pass
+                        self.logger.warning("The monitor you tried to set ({0}) is not in the provided monitor list.".format(k))
                 # General change of DAC for non-monitor global registers.
                 else:
                     if k in ['EnSRDCol', 'EnMonitorCol', 'InjEnCol', 'EnColRO'] and isinstance(kwarg[k], str):
@@ -578,8 +575,6 @@ class Monopix2(Dut):
                 s= s + " {0} is not a valid register name".format(k)
         if flag_last_mon != "":
             s= s + " {0}={1:d}".format(flag_last_mon,kwarg[flag_last_mon])
-        else:
-            pass
         # Write global configuration
         self._write_global_conf()
         # Update self.REG_CONF
@@ -757,13 +752,11 @@ class Monopix2(Dut):
                         if len(p)==2 and isinstance(p[0], int) and isinstance(p[1], int):
                             mask[p[0], p[1]] = 1
                         else: 
-                            self.logger.info("The listed item {0:s} does not correspond to a valid pixel format.".format(p))
-                            raise ValueError
+                            raise TypeError("The listed item {0:s} does not correspond to a valid pixel format.".format(p))
             else:
-                self.logger.info("No pixels given as input for mask creaton.")
+                raise ValueError("No pixels given as input for mask creaton.")
         else:
-            self.logger.info("You have not specified a valid input for mask creation. Please check the code documentation.")
-            raise ValueError
+            raise TypeError("You have not specified a valid input for mask creation. Please check the code documentation.")
         return mask
 
     def set_preamp_en(self, pix="all", EnColRO="auto", Out='autoCMOS', overwrite=False):
@@ -877,8 +870,7 @@ class Monopix2(Dut):
             self.logger.debug("Setting a TDAC matrix of valid dimensions.")
             mask = np.array(tdac, dtype=np.uint8)
         else:
-            self.logger.error("The input tdac parameter must be int or array of size [{0:d},{1:d}]".format(self.chip_props["COL_SIZE"], self.chip_props["ROW_SIZE"]))
-            return 
+            raise TypeError("The input tdac parameter must be int or array of size [{0:d},{1:d}]".format(self.chip_props["COL_SIZE"], self.chip_props["ROW_SIZE"]))
 
         # Unpack the mask as 8 different masks, where the first 4 masks correspond to the 4 Trim bits.
         trim_bits = np.unpackbits(mask)
