@@ -18,7 +18,7 @@ from online_monitor.utils import utils as ou
 
 PROJECT_FOLDER = os.path.dirname(__file__)
 TESTBENCH_DEFAULT_FILE = os.path.join(PROJECT_FOLDER, 'testbench.yaml')
-logLevel = logging.INFO
+logLevel = logging.DEBUG
 
 
 def send_data(socket, data, scan_param_id, index_start, index_stop, data_length, name='ReadoutData'):
@@ -90,20 +90,27 @@ class ScanBase(object):
         # Initialize logger
         self.logger = logging.getLogger(name="ScanBase")
         self.logger.setLevel(logLevel)
+        self.logger.propagate = 0
         for l in self.logger.handlers:
             if isinstance(l, logging.FileHandler):
                self.logger.removeHandler(l)
         logging.getLogger('basil.HL.RegisterHardwareLayer').setLevel(logLevel)
         logFormatter = logging.Formatter("%(asctime)s [%(levelname)-5.5s] [%(threadName)-10s] [%(filename)-15s] [%(funcName)-15s] %(message)s")
-        self.fileHandler = logging.FileHandler(self.output_filename + '.log')
-        self.fileHandler.setFormatter(logFormatter)
-        self.logger.addHandler(self.fileHandler)
+        file_handler = logging.FileHandler(self.output_filename + '.log')
+        file_handler.setFormatter(logFormatter)
+        file_handler.setLevel(logging.DEBUG)
+        stream_handler = logging.StreamHandler(sys.stdout)
+        stream_handler.setLevel(logging.INFO)
+        stream_handler.setFormatter(logFormatter)
+        self.logger.addHandler(stream_handler)
+        self.logger.addHandler(file_handler)
+        self.log_handlers = [file_handler, stream_handler]
         self.logger.info('Initializing %s', self.__class__.__name__)
         self.logger.info("Scan start time: "+time.strftime("%Y-%m-%d_%H:%M:%S"))
         self.scan_start_time=time.localtime()
 
-        # # Initialize MIO3 board
-        self.monopix=monopix2.Monopix2(conf=monopix, no_power_reset=no_power_reset, logLevel=logLevel, logFH=self.fileHandler)
+        # Initialize MIO3 board
+        self.monopix=monopix2.Monopix2(conf=monopix, no_power_reset=no_power_reset, logLevel=logLevel, logHandlers=self.log_handlers)
         self.monopix.init()
 
         # Initialize chip configuration
@@ -174,7 +181,7 @@ class ScanBase(object):
                 self.socket=None
         
         # Execute scan
-        self.fifo_readout = FifoReadout(self.monopix, logLevel=logLevel, logFH=self.fileHandler)
+        self.fifo_readout = FifoReadout(self.monopix, logLevel=logLevel, logHandlers=self.log_handlers)
         self.logger.info('Power Status: %s', str(self.monopix.power_status()))
         self.logger.info('DAC Status: %s', str(self.monopix.dac_status()))
         self.monopix.show("none")

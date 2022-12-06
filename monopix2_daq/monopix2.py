@@ -29,7 +29,7 @@ class Monopix2(Dut):
     # Default path for Monopix2 yaml file
     default_yaml = os.path.dirname(os.path.abspath(__file__)) + os.sep + "monopix2.yaml"
 
-    def __init__(self, conf=None, no_power_reset=True, logLevel=logging.DEBUG, logFH=None):
+    def __init__(self, conf=None, no_power_reset=True, logLevel=logging.DEBUG, logHandlers=None):
         """
         Automatic initialization of the chip
 
@@ -45,10 +45,12 @@ class Monopix2(Dut):
         # Initialize logger. Setting logLevel to DEBUG here allows debug logging in separately called scripts while surpressing it for scan routines
         self.logger = logging.getLogger(name="Monopix2")
         self.logger.setLevel(logLevel)
-        if logFH is not None:
+        if logHandlers is not None:
+            self.logger.propagate = 0
             for lg in logging.Logger.manager.loggerDict.values():
                 if isinstance(lg, logging.Logger):
-                    lg.addHandler(logFH)
+                    for fh in logHandlers:
+                        lg.addHandler(fh)
         self.logger.info("LF-Monopix2 initialized at "+time.strftime("%Y-%m-%d_%H:%M:%S"))
 
         # Define chip dimensions and areas with different settings.

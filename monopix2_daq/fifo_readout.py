@@ -37,14 +37,16 @@ class StopTimeout(Exception):
 
 
 class FifoReadout(object):
-    def __init__(self, dut, logLevel=logging.INFO, logFH=None):
+    def __init__(self, dut, logLevel=logging.INFO, logHandlers=None):
         self.dut = dut
         self.logger = logging.getLogger(name='FifoReadout')
         self.logger.setLevel(logLevel)
-        if logFH is not None:
+        if logHandlers is not None:
+            self.logger.propagate = 0
             for lg in logging.Logger.manager.loggerDict.values():
                 if isinstance(lg, logging.Logger):
-                    lg.addHandler(logFH)
+                    for fh in logHandlers:
+                        lg.addHandler(fh)
         self.callback = None
         self.errback = None
         self.readout_thread = None
