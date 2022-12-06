@@ -572,7 +572,7 @@ class Monopix2(Dut):
                         self["CONF_SR"][k] = kwarg[k]
                     s= s + " {0}={1}".format(k,kwarg[k])
             else:
-                s= s + " {0} is not a valid register name".format(k)
+                self.logger.warning("{0} is not a valid register name.".format(k))
         if flag_last_mon != "":
             s= s + " {0}={1:d}".format(flag_last_mon,kwarg[flag_last_mon])
         # Write global configuration
