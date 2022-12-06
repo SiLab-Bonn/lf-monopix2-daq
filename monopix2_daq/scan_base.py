@@ -18,6 +18,7 @@ from online_monitor.utils import utils as ou
 
 PROJECT_FOLDER = os.path.dirname(__file__)
 TESTBENCH_DEFAULT_FILE = os.path.join(PROJECT_FOLDER, 'testbench.yaml')
+logLevel = logging.INFO
 
 
 def send_data(socket, data, scan_param_id, index_start, index_stop, data_length, name='ReadoutData'):
@@ -73,14 +74,7 @@ class ScanBase(object):
             (If no_power_reset=True: The GPAC will NOT power cycle when the chip is initialized ---> Default for chip safety when high voltage is applied.)
         """
 
-        # # Initialize MIO3 board
-        self.monopix=monopix2.Monopix2(conf=monopix, no_power_reset=no_power_reset)
-        self.monopix.init()
-
         self.configuration = self._load_testbench_cfg(bench_config=None)
-
-        # Initialize chip configuration
-        self._init_chip_config(**_)
 
         # Set working directory and file name
         if self.configuration['bench']['general']['output_directory'] is not None:
@@ -92,22 +86,28 @@ class ScanBase(object):
         if not os.path.exists(self.working_dir):
             os.makedirs(self.working_dir)
         self.output_filename = os.path.join(self.working_dir, self.run_name)
-        
+
         # Initialize logger
-        self.logger = logging.getLogger(name="LF-Monopix2")
-        self.logger.setLevel(logging.INFO)
+        self.logger = logging.getLogger(name="ScanBase")
+        self.logger.setLevel(logLevel)
         for l in self.logger.handlers:
             if isinstance(l, logging.FileHandler):
-               dut_logger_filename=l.baseFilename
                self.logger.removeHandler(l)
+        logging.getLogger('basil.HL.RegisterHardwareLayer').setLevel(logLevel)
         logFormatter = logging.Formatter("%(asctime)s [%(levelname)-5.5s] [%(threadName)-10s] [%(filename)-15s] [%(funcName)-15s] %(message)s")
-        fileHandler = logging.FileHandler(self.output_filename + '.log')
-        fileHandler.setFormatter(logFormatter)
-        self.logger.addHandler(fileHandler)
-        open(fileHandler.baseFilename, "w").writelines([l for l in open(dut_logger_filename).readlines()])
+        self.fileHandler = logging.FileHandler(self.output_filename + '.log')
+        self.fileHandler.setFormatter(logFormatter)
+        self.logger.addHandler(self.fileHandler)
         self.logger.info('Initializing %s', self.__class__.__name__)
         self.logger.info("Scan start time: "+time.strftime("%Y-%m-%d_%H:%M:%S"))
         self.scan_start_time=time.localtime()
+
+        # # Initialize MIO3 board
+        self.monopix=monopix2.Monopix2(conf=monopix, no_power_reset=no_power_reset, logLevel=logLevel, logFH=self.fileHandler)
+        self.monopix.init()
+
+        # Initialize chip configuration
+        self._init_chip_config(**_)
 
         # Assign the socket where the data will be sent (For online monitoring)
         self.socket = self.configuration['bench']['module']['chip']['send_data']
@@ -174,7 +174,7 @@ class ScanBase(object):
                 self.socket=None
         
         # Execute scan
-        self.fifo_readout = FifoReadout(self.monopix)
+        self.fifo_readout = FifoReadout(self.monopix, logLevel=logLevel, logFH=self.fileHandler)
         self.logger.info('Power Status: %s', str(self.monopix.power_status()))
         self.logger.info('DAC Status: %s', str(self.monopix.dac_status()))
         self.monopix.show("none")
