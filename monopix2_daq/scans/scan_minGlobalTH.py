@@ -104,7 +104,7 @@ class ScanMinGlobalTH(scan_base.ScanBase):
         # Initialize a counter of the number of noisy pixels.
         current_noisy = np.array([0, 0, 0])
         
-        pbar = tqdm(total=(th_start[0] - th_stop[0]) / np.abs(th_step[0]), unit=' Voltage steps')
+        pbar = tqdm(total=(th_start[0] - th_stop[0]) / np.abs(th_step[0]) * 2, unit=' Voltage steps')
         # Shift global THs and look for noisy pixels.
         while (lowestTH_flag.all() == False):
             self.logger.debug("----- Shifting global thresholds and checking for noisy pixels -----")
