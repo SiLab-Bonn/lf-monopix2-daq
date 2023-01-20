@@ -29,7 +29,7 @@ class Monopix2(Dut):
     # Default path for Monopix2 yaml file
     default_yaml = os.path.dirname(os.path.abspath(__file__)) + os.sep + "monopix2.yaml"
 
-    def __init__(self, conf=None, no_power_reset=True):
+    def __init__(self, conf=None, no_power_reset=True, logLevel=logging.DEBUG, logHandlers=None):
         """
         Automatic initialization of the chip
 
@@ -42,16 +42,15 @@ class Monopix2(Dut):
             (If no_power_reset=True: The GPAC will NOT power cycle when the chip is initialized ---> Default for chip safety when high voltage is applied.)
         """
 
-        # Initialize logger.
-        self.logger = logging.getLogger(name="LF-Monopix2")
-        logFormatter = logging.Formatter("%(asctime)s [%(levelname)-5.5s] [%(threadName)-10s] [%(filename)-15s] [%(funcName)-15s] %(message)s")
-        fname = mk_fname(ext="log.log")
-        fileHandler = logging.FileHandler(fname)
-        fileHandler.setFormatter(logFormatter) 
-        self.logger.addHandler(fileHandler)
-        for l in self.logger.handlers:
-            if isinstance(l, logging.StreamHandler):
-                l.setFormatter(logFormatter)
+        # Initialize logger. Setting logLevel to DEBUG here allows debug logging in separately called scripts while surpressing it for scan routines
+        self.logger = logging.getLogger(name="Monopix2")
+        self.logger.setLevel(logLevel)
+        if logHandlers is not None:
+            self.logger.propagate = 0
+            for lg in logging.Logger.manager.loggerDict.values():
+                if isinstance(lg, logging.Logger):
+                    for fh in logHandlers:
+                        lg.addHandler(fh)
         self.logger.info("LF-Monopix2 initialized at "+time.strftime("%Y-%m-%d_%H:%M:%S"))
 
         # Define chip dimensions and areas with different settings.
@@ -107,7 +106,7 @@ class Monopix2(Dut):
 
         # Get firmware version and log it.
         fw_version = self.get_fw_version()
-        logging.info("Firmware version: {}".format(fw_version))
+        self.logger.info("Firmware version: {}".format(fw_version))
         
         #Wait time between GPAC initialization and actual 
         time.sleep(0.1)

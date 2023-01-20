@@ -8,6 +8,7 @@
 import logging
 import sys
 import datetime
+import logging
 from time import sleep, time, mktime
 from threading import Thread, Event, Lock
 from collections import deque
@@ -36,8 +37,16 @@ class StopTimeout(Exception):
 
 
 class FifoReadout(object):
-    def __init__(self, dut):
+    def __init__(self, dut, logLevel=logging.INFO, logHandlers=None):
         self.dut = dut
+        self.logger = logging.getLogger(name='FifoReadout')
+        self.logger.setLevel(logLevel)
+        if logHandlers is not None:
+            self.logger.propagate = 0
+            for lg in logging.Logger.manager.loggerDict.values():
+                if isinstance(lg, logging.Logger):
+                    for fh in logHandlers:
+                        lg.addHandler(fh)
         self.callback = None
         self.errback = None
         self.readout_thread = None
@@ -77,7 +86,7 @@ class FifoReadout(object):
         if self.fill_buffer:
             return self._data_buffer
         else:
-            logging.warning('Data requested but software data buffer not active')
+            self.logger.warning('Data requested but software data buffer not active')
 
     def data_words_per_second(self):
         if self._result.full():
@@ -94,7 +103,7 @@ class FifoReadout(object):
         if self._is_running:
             raise RuntimeError('Readout already running: use stop() before start()')
         self._is_running = True
-        logging.debug('Starting FIFO readout...')
+        self.logger.debug('Starting FIFO readout...')
         self.callback = callback
         self.errback = errback
         self.fill_buffer = fill_buffer
@@ -106,7 +115,7 @@ class FifoReadout(object):
         else:
             fifo_size = self.dut['fifo']['FIFO_SIZE']
             if fifo_size != 0:
-                logging.warning('SRAM FIFO not empty when starting FIFO readout: size = %i', fifo_size)
+                self.logger.warning('SRAM FIFO not empty when starting FIFO readout: size = %i', fifo_size)
         self._words_per_read.clear()
         if clear_buffer:
             self._data_deque.clear()
@@ -137,12 +146,12 @@ class FifoReadout(object):
                 if timeout:
                     raise StopTimeout('FIFO stop timeout after %0.1f second(s)' % timeout)
                 else:
-                    logging.debug('FIFO stop timeout')
+                    self.logger.debug('FIFO stop timeout')
         except StopTimeout as e:
             if self.errback:
                 self.errback(sys.exc_info())
             else:
-                logging.error(e)
+                self.logger.error(e)
         if self.readout_thread.is_alive():
             self.readout_thread.join()
         if self.errback:
@@ -151,15 +160,15 @@ class FifoReadout(object):
             self.worker_thread.join()
         self.callback = None
         self.errback = None
-        logging.debug('Stopped FIFO readout')
+        self.logger.debug('Stopped FIFO readout')
 
     def print_readout_status(self):
         ret = self.get_discard_count()
-        logging.info('Received words: %d', self._record_count)
-        logging.info('Data queue size: %d', len(self._data_deque))
-        logging.info('SRAM FIFO size: %d', self.dut['fifo']['FIFO_SIZE'])
-        logging.info('Channel:                     %s', " | ".join(['MONO','T_INJ',"T_MON","T_TLU","T_RX1","TLU"]))
-        logging.info('Discard counter:             %s', " | ".join([str(ret['data_rx']).rjust(4), 
+        self.logger.info('Received words: %d', self._record_count)
+        self.logger.info('Data queue size: %d', len(self._data_deque))
+        self.logger.info('SRAM FIFO size: %d', self.dut['fifo']['FIFO_SIZE'])
+        self.logger.info('Channel:                     %s', " | ".join(['MONO','T_INJ',"T_MON","T_TLU","T_RX1","TLU"]))
+        self.logger.info('Discard counter:             %s', " | ".join([str(ret['data_rx']).rjust(4),
                                                                     str(ret['timestamp_inj']).rjust(5),
                                                                     str(ret['timestamp_mon']).rjust(5),
                                                                     str(ret['timestamp_tlu']).rjust(5),
@@ -167,13 +176,13 @@ class FifoReadout(object):
                                                                     str(ret['tlu']).rjust(3)]))
         for k,v in ret.items():
             if v!=0:
-                logging.warning('Errors detected %s'%k)
+                self.logger.warning('Errors detected %s'%k)
 
     def readout(self, no_data_timeout=None):
         '''Readout thread continuously reading SRAM.
         Readout thread, which uses read_data() and appends data to self._data_deque (collection.deque).
         '''
-        logging.debug('Starting %s', self.readout_thread.name)
+        self.logger.debug('Starting %s', self.readout_thread.name)
         curr_time = self.get_float_time()
         time_wait = 0.0
         while not self.force_stop.wait(time_wait if time_wait >= 0.0 else 0.0):
@@ -212,12 +221,12 @@ class FifoReadout(object):
                 self._result.put(sum(self._words_per_read))
         if self.callback:
             self._data_deque.append(None)  # last item, will stop worker
-        logging.debug('Stopped %s', self.readout_thread.name)
+        self.logger.debug('Stopped %s', self.readout_thread.name)
 
     def worker(self):
         '''Worker thread continuously calling callback function when data is available.
         '''
-        logging.debug('Starting %s', self.worker_thread.name)
+        self.logger.debug('Starting %s', self.worker_thread.name)
         while True:
             try:
                 data = self._data_deque.popleft()
@@ -232,10 +241,10 @@ class FifoReadout(object):
                     except Exception:
                         self.errback(sys.exc_info())
 
-        logging.debug('Stopped %s', self.worker_thread.name)
+        self.logger.debug('Stopped %s', self.worker_thread.name)
 
     def watchdog(self):
-        logging.debug('Starting %s', self.watchdog_thread.name)
+        self.logger.debug('Starting %s', self.watchdog_thread.name)
         while True:
             try:
                 c=0
@@ -246,7 +255,7 @@ class FifoReadout(object):
                 self.errback(sys.exc_info())
             if self.stop_readout.wait(self.readout_interval * 10):
                 break
-        logging.debug('Stopped %s', self.watchdog_thread.name)
+        self.logger.debug('Stopped %s', self.watchdog_thread.name)
 
     def read_data(self):
         '''
@@ -285,16 +294,16 @@ class FifoReadout(object):
 
     def reset_sram_fifo(self):
         fifo_size = self.dut['fifo']['FIFO_SIZE']
-        logging.info('Resetting SRAM FIFO: size = %i', fifo_size)
+        self.logger.info('Resetting SRAM FIFO: size = %i', fifo_size)
         self.update_timestamp()
         self.dut['fifo']['RESET']
         sleep(0.2)  # sleep here for a while
         fifo_size = self.dut['fifo']['FIFO_SIZE']
         if fifo_size != 0:
-            logging.warning('SRAM FIFO not empty after reset: size = %i', fifo_size)
+            self.logger.warning('SRAM FIFO not empty after reset: size = %i', fifo_size)
 
     def reset_rx(self):
-        logging.debug('Resetting RX')
+        self.logger.debug('Resetting RX')
         self.dut['CONF']['ResetBcid'] = 1
         self.dut['CONF']['Rst'] = 1
         self.dut['CONF'].write()
