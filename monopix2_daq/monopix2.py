@@ -713,6 +713,23 @@ class Monopix2(Dut):
             pixconf_exchanged_bit= np.reshape(np.packbits(matrix_in_bits),(self.chip_props["COL_SIZE"], self.chip_props["ROW_SIZE"]))
             self.PIXEL_CONF[bit] = pixconf_exchanged_bit
 
+    def create_shift_pattern(self, step):
+        """ Creates "classic" shift pattern for injection mask
+        """
+        base_mask = np.zeros([self.chip_props["COL_SIZE"], self.chip_props["ROW_SIZE"]], dtype=bool)
+        mask_steps = self.chip_props["COL_SIZE"] * step
+        current_step = 0
+        mask_list = []
+
+        for row in range(0, self.chip_props['ROW_SIZE'], step):
+            base_mask[0, row] = True
+
+        while current_step < mask_steps:
+            mask_list.append(np.roll(np.roll(base_mask, current_step // self.chip_props["COL_SIZE"], 1), current_step % self.chip_props["COL_SIZE"], 0))
+            current_step += 1
+
+        return mask_list
+
     def _create_mask(self, pix):
         """
         Creates a mask of the same dimensions as the chip's dimensions.

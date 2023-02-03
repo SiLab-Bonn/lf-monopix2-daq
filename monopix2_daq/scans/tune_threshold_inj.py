@@ -44,7 +44,7 @@ class TuneTHinj(scan_base.ScanBase):
         occ_acceptance = 0.05
 
         # Enable pixels.
-        self.monopix.set_preamp_en(self.pix)
+        self.monopix.set_preamp_en(self.enable_mask)
 
         # Enable timestamps.
         if with_inj:
@@ -64,24 +64,11 @@ class TuneTHinj(scan_base.ScanBase):
         else:
             phaselist=[self.monopix["inj"].get_phase()]
 
-        # Maybe not necessary
-        # mask_n=int((len(pix)-0.5)/n_mask_pix+1)
-
-        # Determine the number of pixels between the injected pixels for the mask. Limits by the maximum number of injected pixels, if needed.
-        if mask_step is not None:    
-            if mask_step < (math.ceil(len(self.pix)/n_mask_pix_limit)):
-                mask_step = (math.ceil(len(self.pix)/n_mask_pix_limit))
-            else:
-                pass
+        # Create initial list of injection masks
+        if mask_step is not None:
+            inj_mask_list = self.monopix.create_shift_pattern(mask_step)
         else:
-            mask_step = (math.ceil(len(self.pix)/n_mask_pix))
-
-        # Create a list of masks to be applied for every injection step. TODO: check which mask generation to use
-        list_of_masks=scan_utils.generate_mask(n_cols=self.monopix.chip_props["COL_SIZE"], n_rows=self.monopix.chip_props["ROW_SIZE"], mask_steps=mask_step, return_lists=False)
-
-        list_of_masks=scan_utils.generate_mask_per_column(enabled_columns=np.unique([coln[0] for coln in self.pix]), n_rows=self.monopix.chip_props["ROW_SIZE"], step_size=2, return_lists=False)
-        mask_n=len(list_of_masks)
-        n_mask_pix=int(math.ceil(self.monopix.chip_props["ROW_SIZE"]/(mask_step*1.0)) * len(np.unique([coln[0] for coln in self.pix], axis=0)) )
+            inj_mask_list = self.monopix.create_shift_pattern(math.ceil(self.monopix.chip_props['ROW_SIZE'] / n_mask_pix))
 
         # If changed from the initial configuration, set the LSB DAC value.
         if lsb_dac is not None:
@@ -116,7 +103,7 @@ class TuneTHinj(scan_base.ScanBase):
         # Create an empty map that will keep track of the signs for the step in enabled pixels (According to its tuning circuitry). 
         trim_increase_sign = np.zeros(shape=self.monopix.PIXEL_CONF["EnPre"].shape, dtype=np.int16)
 
-        for col in np.unique([coln[0] for coln in self.pix], axis=0):
+        for col in np.unique([coln[0] for coln in np.argwhere(self.enable_mask == 1)], axis=0):
             #Initialize TRIM DAC values in the middle of the range.
             trim_ref[col,0:self.monopix.chip_props["ROW_SIZE"]:1] = 7
             trim_ref[col,0:self.monopix.chip_props["ROW_SIZE"]:2] = 8
@@ -128,37 +115,36 @@ class TuneTHinj(scan_base.ScanBase):
         self.monopix.set_tdac(trim_ref, overwrite=True)
 
         # Run the tuning logic with binary search.
-        pbar = tqdm(total=len(tune_steps) * mask_n, unit=' Masks')
-        cnt=0
+        pbar = tqdm(total=len(tune_steps) * len(inj_mask_list), unit=' Masks')
         for scan_param_id, t_step in enumerate(tune_steps):
             data=np.array([],dtype=np.int32)
             # Start Read-out.
             self.monopix.set_monoread()
             # Go through the masks.
-            for mask_i in range(mask_n):
+            for mask_i in inj_mask_list:
+                mask_i = np.logical_and(mask_i, self.enable_mask)
+                # Skip masks with zero enabled pixels
+                if not np.any(mask_i):
+                    pbar.update(1)
+                    continue
+
                 self.logger.debug('Injecting: Mask {0}, aiming to tune to Injection {1:.3f}V'.format(scan_param_id,inj_target))
-                mask_pix=[]
-                pix_frommask=list_of_masks[mask_i]
-                # Check if the pixel in the mask is enabled originally.
-                for i in range(len(self.pix)):
-                    if pix_frommask[self.pix[i][0], self.pix[i][1]]==1 and en_ref[self.pix[i][0], self.pix[i][1]]==1:
-                        mask_pix.append(self.pix[i])
+
                 # Enable monitors and wait a bit, since the setting seems to couple into the CSA output
                 if with_mon:
-                    self.monopix.set_mon_en(mask_pix[0], overwrite=True)
-                    time.sleep(0.02)    
-                # Enable injection to the pixels.
-                self.monopix.set_inj_en(mask_pix, overwrite=True)
+                    monitor_pix = [int(np.argwhere(mask_i == True)[0][0]), int(np.argwhere(mask_i == True)[0][1])]
+                    self.monopix.set_mon_en(monitor_pix, overwrite=True)
+                    time.sleep(0.05)
+                self.monopix.set_inj_en(mask_i, overwrite=True)
                 if disable_noninjected_pixel:
-                    self.monopix.set_preamp_en(mask_pix, overwrite=True)
-                #mask_pix_tmp=mask_pix
-                #for i in range(n_mask_pix-len(mask_pix)):
-                #    mask_pix_tmp.append([-1,-1])
+                    self.monopix.set_preamp_en(mask_i, overwrite=True)
+
                 # Reset and clear trash hits before injecting.
                 time.sleep(0.01)
                 for _ in range(10):
                     self.monopix["fifo"]["RESET"] 
                     time.sleep(0.002)
+
                 # Inject and get data.
                 buf = self.monopix.get_data()
                 data = np.concatenate((data,buf), axis=None)
@@ -211,12 +197,6 @@ class TuneTHinj(scan_base.ScanBase):
                     elif p[0] in self.monopix.chip_props["COLS_TUNING_BI"]:
                         trim_ref[p[0],p[1]] = min(trim_ref[p[0],p[1]]+1,15) 
             """
-
-            pre_cnt=cnt
-            self.logger.debug('mask=%d pix=%s data=%d'%(mask_i,str(mask_pix),cnt-pre_cnt))
-            time.sleep(0.1)
-            pre_cnt=cnt
-            cnt=self.fifo_readout.get_record_count()
 
             # Update the TDAC for the mask and enable again all the original pixels.
             self.monopix.set_tdac(trim_ref, overwrite=True)

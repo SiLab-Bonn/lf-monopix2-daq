@@ -30,13 +30,13 @@ class ScanSource(scan_base.ScanBase):
         scanned=0
 
         # Enable pixels.
-        self.monopix.set_preamp_en(self.pix)
+        self.monopix.set_preamp_en(self.enable_mask)
 
         # Enable monitored pixel.
         if monitor_pixel is not None:
             self.monopix.set_mon_en(monitor_pixel, overwrite=True)
         else:
-            self.monopix.set_mon_en(self.pix[0], overwrite=True)
+            self.monopix.set_mon_en([26, 140], overwrite=True)
 
         # Enable timestamps.
         if with_tlu:

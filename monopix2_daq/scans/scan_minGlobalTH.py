@@ -34,13 +34,13 @@ class ScanMinGlobalTH(scan_base.ScanBase):
         th = th_start
 
         # Enable pixels.
-        self.monopix.set_preamp_en(self.pix)
+        self.monopix.set_preamp_en(self.enable_mask)
 
         # Enable monitored pixel.
         if monitor_pixel is not None:
             self.monopix.set_mon_en(monitor_pixel, overwrite=True)
         else:
-            self.monopix.set_mon_en(self.pix[0], overwrite=True)
+            self.monopix.set_mon_en([26, 170], overwrite=True)
 
         # Enable timestamps.
         if with_mon:
