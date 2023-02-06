@@ -82,7 +82,9 @@ class ScanMinGlobalTH(scan_base.ScanBase):
         en_where = np.full_like(en_current, True, dtype=bool)
 
         # Count the total number of masked pixels: format [M1, M2, M3].
-        orig_pix_n = np.array([np.count_nonzero(self.enable_mask[16:56]), np.count_nonzero(self.enable_mask[8:16]), np.count_nonzero(self.enable_mask[0:8])])
+        orig_pix_n = np.array([np.count_nonzero(self.enable_mask[self.monopix.chip_props["COLS_M1"][0]:self.monopix.chip_props["COLS_M1"][-1]]),
+                               np.count_nonzero(self.enable_mask[self.monopix.chip_props["COLS_M2"][0]:self.monopix.chip_props["COLS_M2"][-1]]),
+                               np.count_nonzero(self.enable_mask[self.monopix.chip_props["COLS_M3"][0]:self.monopix.chip_props["COLS_M3"][-1]])])
 
         # Determine the maximum number of noisy/masked pixels in every CSA flavour.
         masked_pixel_limit = (orig_pix_n * mask_factor).astype(int)
