@@ -317,7 +317,7 @@ class ScanBase(object):
 
         return conf
 
-    def _init_chip_config(self, config_file=None, th1=None, th2=None, th3=None, flavor=None, **_):
+    def _init_chip_config(self, config_file=None, th1=None, th2=None, th3=None, flavor=None, start_col=None, stop_col=None, start_row=None, stop_row=None, **_):
         ''' Initialize and configure chip, parameters given (mostly) as parser arguments
         '''
         if config_file is not None:
@@ -344,6 +344,11 @@ class ScanBase(object):
                 tmp=flavor.split(":")
                 self.enable_mask[int(tmp[0]):int(tmp[1])] = 1
                 self.monopix.logger.info("Enabled: Columns {0:s} to {1:s}".format(tmp[0], tmp[1]))
+            if config_file is not None or self.configuration['bench']['module']['chip']['chip_config'] is not None:
+                self.enable_mask[~np.array(self.monopix.PIXEL_CONF["EnPre"], bool)] = 0
+
+        elif np.all([start_col, stop_col, start_row, stop_row]) is not None:
+            self.enable_mask[start_col:stop_col, start_row:stop_row] = 1
             if config_file is not None or self.configuration['bench']['module']['chip']['chip_config'] is not None:
                 self.enable_mask[~np.array(self.monopix.PIXEL_CONF["EnPre"], bool)] = 0
 

@@ -16,6 +16,11 @@ local_configuration={
     "monitor_pixel": None,      # Pixel to be monitored. Format: [COL,ROW]
     "scan_time": 10,            # Scan time (in seconds)
     "tlu_delay": 8,             # Delay setting for the TLU (Default for standard cable length: 7 or 8)
+
+    "start_col": None,
+    "stop_col": None,
+    "start_row": None,
+    "stop_row": None,
 }
 
 class ScanSource(scan_base.ScanBase):
@@ -103,16 +108,14 @@ if __name__ == "__main__":
     parser.add_argument('-t3',"--th3", type=float, default=None)
     parser.add_argument("-f","--flavor", type=str, default=None)
     parser.add_argument("-p","--power_reset", action='store_const', const=1, default=0) # Default = True: Skip power reset.
-    parser.add_argument("-time",'--scan_time', type=int, default=None,
+    parser.add_argument("-time","--scan_time", type=int, default=local_configuration["scan_time"],
                         help="Scan time in seconds.")
     
     args=parser.parse_args()
     args.no_power_reset = not bool(args.power_reset)
-
-    if args.scan_time is not None:
-        local_configuration["scan_time"]=args.scan_time
+    local_configuration.update(vars(args))
     
-    scan = ScanSource(**vars(args))
+    scan = ScanSource(**local_configuration)
     scan.start(**local_configuration)
     scan.analyze()
     scan.plot()

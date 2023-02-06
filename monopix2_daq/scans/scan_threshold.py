@@ -27,6 +27,11 @@ local_configuration={
     "trim_limit": None,                     # TRIM limit (True: High, False: Lowest, "unbiased": Unbiased)
     "with_calibration": True,               # Determine if calibration is used in the output plots
     "c_inj": 2.76e-15,                      # Injection capacitance value in F
+
+    "start_col": None,
+    "stop_col": None,
+    "start_row": None,
+    "stop_row": None,
 }
 
 class ScanThreshold(scan_base.ScanBase):
@@ -221,8 +226,9 @@ if __name__ == "__main__":
     
     args=parser.parse_args()
     args.no_power_reset = not bool(args.power_reset)
+    local_configuration.update(vars(args))
     
-    scan = ScanThreshold(**vars(args))
+    scan = ScanThreshold(**local_configuration)
     scan.start(**local_configuration)
     scan.analyze()
     scan.plot(**local_configuration)

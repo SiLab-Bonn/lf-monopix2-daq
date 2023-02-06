@@ -21,6 +21,11 @@ local_configuration={
     "th_step": [-0.01,-0.01,-0.01],     # Telescopic steps to reach the minimum global threshold
     "trim_mask": None,                  # TRIM mask (None: Go with TRIM limit, 'middle': Middle TRIM)
     "trim_limit": False,                # TRIM limit (True: High, False: Lowest, "unbiased": Unbiased)
+
+    "start_col": None,
+    "stop_col": None,
+    "start_row": None,
+    "stop_row": None,
 }
 
 class ScanMinGlobalTH(scan_base.ScanBase):
@@ -234,8 +239,9 @@ if __name__ == "__main__":
     
     args=parser.parse_args()
     args.no_power_reset = not bool(args.power_reset)
+    local_configuration.update(vars(args))
     
-    scan = ScanMinGlobalTH(**vars(args))
+    scan = ScanMinGlobalTH(**local_configuration)
     scan.start(**local_configuration)
     scan.analyze()
     scan.plot()

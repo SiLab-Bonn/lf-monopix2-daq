@@ -25,6 +25,11 @@ local_configuration={
     "mask_step": None,                      # Number of pixels between injected pixels in the same column (overwrites n_mask_pix if not None)
     "inj_n_param": 100,                     # Number of injection pulses per pixel and step
     "lsb_dac": None,                        # LSB dac value
+
+    "start_col": None,
+    "stop_col": None,
+    "start_row": None,
+    "stop_row": None,
 }
 
 class TuneTHinj(scan_base.ScanBase):
@@ -236,8 +241,9 @@ if __name__ == "__main__":
     
     args=parser.parse_args()
     args.no_power_reset = not bool(args.power_reset)
+    local_configuration.update(vars(args))
     
-    scan = TuneTHinj(**vars(args))
+    scan = TuneTHinj(**local_configuration)
     scan.start(**local_configuration)
     scan.analyze()
     scan.plot(**local_configuration)
