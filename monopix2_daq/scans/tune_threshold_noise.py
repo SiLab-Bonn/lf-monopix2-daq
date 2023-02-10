@@ -47,7 +47,7 @@ class TuneTHnoise(scan_base.ScanBase):
         occ_target = cnt_th
 
         # Enable pixels.
-        self.monopix.set_preamp_en(self.pix, overwrite=True)
+        self.monopix.set_preamp_en(self.enable_mask, overwrite=True)
 
         # Enable timestamps.
         if with_mon:
@@ -65,19 +65,11 @@ class TuneTHnoise(scan_base.ScanBase):
         else:
             phaselist=[self.monopix["inj"].get_phase()]
 
-        # Determine the number of pixels between the injected pixels for the mask. Limits by the maximum number of injected pixels, if needed.
-        if mask_step is not None:    
-            if mask_step < (math.ceil(len(self.pix)/n_mask_pix_limit)):
-                mask_step = (math.ceil(len(self.pix)/n_mask_pix_limit))
-            else:
-                pass
+        # Create initial list of injection masks
+        if mask_step is not None:
+            inj_mask_list = self.monopix.create_shift_pattern(mask_step)
         else:
-            mask_step = (math.ceil(len(self.pix)/n_mask_pix))
-
-        # Create a list of masks to be applied for every injection step.
-        list_of_masks=scan_utils.generate_mask(n_cols=self.monopix.chip_props["COL_SIZE"], n_rows=self.monopix.chip_props["ROW_SIZE"], mask_steps=mask_step, return_lists=False)
-        mask_n=len(list_of_masks)
-        n_mask_pix=int(math.ceil(self.monopix.chip_props["ROW_SIZE"]/(mask_step*1.0)) * len(np.unique([coln[0] for coln in self.pix], axis=0)) )
+            inj_mask_list = self.monopix.create_shift_pattern(math.ceil(self.monopix.chip_props['ROW_SIZE'] / n_mask_pix))
 
         # If changed from the initial configuration, set the LSB DAC value.
         if lsb_dac is not None:
@@ -109,7 +101,7 @@ class TuneTHnoise(scan_base.ScanBase):
         tuned_flags = np.invert(np.logical_and(tuned_flags.astype(bool),en_org.astype(bool)))
 
         trim_ref = self.monopix.default_TDAC_mask(limit=True)
-        for col in np.unique([coln[0] for coln in self.pix], axis=0):
+        for col in np.unique([coln[0] for coln in np.argwhere(self.enable_mask == 1)], axis=0):
             # Fill the TRIM step sign map (According to its tuning circuitry). 
             if col in self.monopix.chip_props["COLS_TUNING_UNI"]:
                 trim_increase_sign[col,0:self.monopix.chip_props["ROW_SIZE"]] = 1
@@ -131,22 +123,19 @@ class TuneTHnoise(scan_base.ScanBase):
 
             # Go through the masks.
             self.logger.info('Tune step {0}, aiming to tune to a noise occupancy of {1:.1e} Hits / 25 ns'.format(scan_param_id,(cnt_th*(1e-9)*25/exp_time)))
-            for mask_i in range(mask_n):
+            for mask_i in inj_mask_list:
+                mask_i = np.logical_and(mask_i, self.enable_mask)
+                # Skip masks with zero enabled pixels
+                if not np.any(mask_i):
+                    continue
 
-                self.logger.info('Pixel Mask {0}'.format(mask_i))
-                mask_pix=[]
-                pix_frommask=list_of_masks[mask_i]
-
-                # Check if the pixel in the mask is enabled originally.
-                for i in range(len(self.pix)):
-                    if pix_frommask[self.pix[i][0], self.pix[i][1]]==1 and en_ref[self.pix[i][0], self.pix[i][1]]==1:
-                        mask_pix.append(self.pix[i])
                 # Enable monitors and wait a bit, since the setting seems to couple into the CSA output
                 if with_mon:
-                    self.monopix.set_mon_en(mask_pix[0], overwrite=True)
-                    time.sleep(0.02)    
+                    monitor_pix = [int(np.argwhere(mask_i == True)[0][0]), int(np.argwhere(mask_i == True)[0][1])]
+                    self.monopix.set_mon_en(monitor_pix, overwrite=True)
+                    time.sleep(0.05)
                 if disable_notenabled_pixel:
-                    self.monopix.set_preamp_en(mask_pix, overwrite=True)
+                    self.monopix.set_preamp_en(mask_i, overwrite=True)
                     time.sleep(0.1)
                 # Reset and clear trash hits before measuring.
                 for _ in range(10):
@@ -179,17 +168,8 @@ class TuneTHnoise(scan_base.ScanBase):
             # Update the best results before reaching the noise.
             best_results_map[larger_occ] = trim_ref[larger_occ] + trim_increase_sign[larger_occ]
             
-            for mask_i in list(range(mask_n)):
-                occupied_counter=0
-                pix_frommask=list_of_masks[mask_i]
-                for i in range(len(self.pix)):
-                    if pix_frommask[self.pix[i][0], self.pix[i][1]]==1 and en_ref[self.pix[i][0], self.pix[i][1]]==1:
-                        if occupancy_map[self.pix[i][0],self.pix[i][1]] > occ_target:
-                            occupied_counter=occupied_counter+1
-                self.logger.info("Pixels from mask {0} with occupancy larger than threshold: {1}".format(mask_i, occupied_counter))
-                if debug_flag:
-                    for occupix in np.argwhere(larger_occ & pix_frommask):
-                        self.logger.info("Pixel {0}: {1}".format(occupix, occupancy_map[occupix[0], occupix[1]])) 
+            occupied_counter = np.count_nonzero(np.argwhere(occupancy_map > occ_target))
+            self.logger.info("Pixels with occupancy larger than threshold: {1}".format(occupied_counter))
 
             trim_ref[larger_occ] += ( trim_increase_sign[larger_occ] )
             tuned_flags = np.logical_or(larger_occ, tuned_flags)
