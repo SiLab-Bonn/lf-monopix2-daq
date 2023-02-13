@@ -220,8 +220,9 @@ if __name__ == "__main__":
     
     args=parser.parse_args()
     args.no_power_reset = not bool(args.power_reset)
+    local_configuration.update(vars(args))
     
-    scan = TuneTHnoise(**vars(args))
+    scan = TuneTHnoise(**local_configuration)
     scan.start(**local_configuration)
     scan.analyze()
     scan.plot(**local_configuration)
