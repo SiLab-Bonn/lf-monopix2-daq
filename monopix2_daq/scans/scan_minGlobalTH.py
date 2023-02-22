@@ -21,6 +21,11 @@ local_configuration={
     "th_step": [-0.01,-0.01,-0.01],     # Telescopic steps to reach the minimum global threshold
     "trim_mask": None,                  # TRIM mask (None: Go with TRIM limit, 'middle': Middle TRIM)
     "trim_limit": False,                # TRIM limit (True: High, False: Lowest, "unbiased": Unbiased)
+
+    "start_col": None,
+    "stop_col": None,
+    "start_row": None,
+    "stop_row": None,
 }
 
 class ScanMinGlobalTH(scan_base.ScanBase):
@@ -34,13 +39,13 @@ class ScanMinGlobalTH(scan_base.ScanBase):
         th = th_start
 
         # Enable pixels.
-        self.monopix.set_preamp_en(self.pix)
+        self.monopix.set_preamp_en(self.enable_mask)
 
         # Enable monitored pixel.
         if monitor_pixel is not None:
             self.monopix.set_mon_en(monitor_pixel, overwrite=True)
         else:
-            self.monopix.set_mon_en(self.pix[0], overwrite=True)
+            self.monopix.set_mon_en([26, 170], overwrite=True)
 
         # Enable timestamps.
         if with_mon:
@@ -76,19 +81,10 @@ class ScanMinGlobalTH(scan_base.ScanBase):
         en_ref = np.ones_like(self.monopix.PIXEL_CONF["EnPre"])
         en_where = np.full_like(en_current, True, dtype=bool)
 
-        # Count the total number of masked pixels.
-        orig_pix_n = np.array([0, 0, 0])
-        for col_id, cols in enumerate(en_current):
-            for rows in cols[:]:
-                if rows==1:
-                    if col_id in self.monopix.chip_props["COLS_M1"]:
-                        orig_pix_n[0] += 1
-                    elif col_id in self.monopix.chip_props["COLS_M2"]:
-                        orig_pix_n[1] += 1
-                    elif col_id in self.monopix.chip_props["COLS_M3"]:
-                        orig_pix_n[2] += 1
-                    else:
-                        pass
+        # Count the total number of masked pixels: format [M1, M2, M3].
+        orig_pix_n = np.array([np.count_nonzero(self.enable_mask[self.monopix.chip_props["COLS_M1"][0]:self.monopix.chip_props["COLS_M1"][-1]]),
+                               np.count_nonzero(self.enable_mask[self.monopix.chip_props["COLS_M2"][0]:self.monopix.chip_props["COLS_M2"][-1]]),
+                               np.count_nonzero(self.enable_mask[self.monopix.chip_props["COLS_M3"][0]:self.monopix.chip_props["COLS_M3"][-1]])])
 
         # Determine the maximum number of noisy/masked pixels in every CSA flavour.
         masked_pixel_limit = (orig_pix_n * mask_factor).astype(int)
@@ -245,8 +241,9 @@ if __name__ == "__main__":
     
     args=parser.parse_args()
     args.no_power_reset = not bool(args.power_reset)
+    local_configuration.update(vars(args))
     
-    scan = ScanMinGlobalTH(**vars(args))
+    scan = ScanMinGlobalTH(**local_configuration)
     scan.start(**local_configuration)
     scan.analyze()
     scan.plot()

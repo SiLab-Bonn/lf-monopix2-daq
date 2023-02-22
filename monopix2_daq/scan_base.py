@@ -317,7 +317,7 @@ class ScanBase(object):
 
         return conf
 
-    def _init_chip_config(self, config_file=None, th1=None, th2=None, th3=None, flavor=None, **_):
+    def _init_chip_config(self, config_file=None, th1=None, th2=None, th3=None, flavor=None, start_col=None, stop_col=None, start_row=None, stop_row=None, **_):
         ''' Initialize and configure chip, parameters given (mostly) as parser arguments
         '''
         if config_file is not None:
@@ -334,36 +334,28 @@ class ScanBase(object):
         if th3 is not None:
             self.monopix.set_th(3, th3)
 
+        self.enable_mask = np.zeros((self.monopix.chip_props['COL_SIZE'], self.monopix.chip_props['ROW_SIZE']), dtype=bool)
+
         if flavor is not None:
             if flavor=="all":
-                collist=range(0, self.monopix.chip_props["COL_SIZE"])
+                self.enable_mask[:, :] = 1
                 self.monopix.logger.info("Enabled: Full matrix")
             else:
                 tmp=flavor.split(":")
-                collist=range(int(tmp[0]), int(tmp[1]))
+                self.enable_mask[int(tmp[0]):int(tmp[1])] = 1
                 self.monopix.logger.info("Enabled: Columns {0:s} to {1:s}".format(tmp[0], tmp[1]))
+            if config_file is not None or self.configuration['bench']['module']['chip']['chip_config'] is not None:
+                self.enable_mask[~np.array(self.monopix.PIXEL_CONF["EnPre"], bool)] = 0
 
-            self.pix=[]
-            for i in collist:
-                for j in range(0, self.monopix.chip_props["ROW_SIZE"]):
-                    if config_file is not None or self.configuration['bench']['module']['chip']['chip_config'] is not None:
-                        if self.monopix.PIXEL_CONF["EnPre"][i,j]!=0:
-                            self.pix.append([i,j])
-                        else:
-                            pass
-                    else:
-                            self.pix.append([i,j])
+        elif np.all([start_col, stop_col, start_row, stop_row]) is not None:
+            self.enable_mask[start_col:stop_col, start_row:stop_row] = 1
+            if config_file is not None or self.configuration['bench']['module']['chip']['chip_config'] is not None:
+                self.enable_mask[~np.array(self.monopix.PIXEL_CONF["EnPre"], bool)] = 0
+
         else:
-            self.pix=[]
-            self.monopix.set_preamp_en(self.monopix.PIXEL_CONF["EnPre"])
+            self.enable_mask = np.array(self.monopix.PIXEL_CONF["EnPre"], bool)
+            self.monopix.set_preamp_en(self.enable_mask)
             self.monopix.set_tdac(self.monopix.PIXEL_CONF["Trim"], overwrite=True)
-            
-            for i in range(0, self.monopix.chip_props["COL_SIZE"]):
-                for j in range(0, self.monopix.chip_props["ROW_SIZE"]):
-                    if self.monopix.PIXEL_CONF["EnPre"][i,j]!=0:
-                        self.pix.append([i,j])
-                    else:
-                        pass
 
     def close(self):
         '''
