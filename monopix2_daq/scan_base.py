@@ -365,7 +365,21 @@ class ScanBase(object):
             self.fifo_readout.stop(timeout=0)
         except RuntimeError:
             self.logger.info("Fifo has been already closed")
+        self.monopix.close()
+        self._close_logfiles()
         self._close_sockets()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        self.close()
+
+    def _close_logfiles(self):
+        for handler in self.log_handlers:
+            for lg in logging.Logger.manager.loggerDict.values():
+                if isinstance(lg, logging.Logger):
+                    lg.removeHandler(handler)
 
     def _close_sockets(self):
         if self.context:

@@ -1,3 +1,5 @@
+import os
+import tables as tb
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.special import erf
@@ -193,3 +195,43 @@ def fit_gauss(x_data, y_data):
     mu_fit = params_from_fit[0][1]
     sigma_fit = np.abs(params_from_fit[0][2])
     return A_fit, mu_fit, sigma_fit
+
+
+def get_latest_config_node_from_files(directory):
+    ''' Returns the latest usable h5 file in the directory for the config.
+
+        Usable means: file handel available and file not broken
+    '''
+    # Naming suffices of scans
+    scan_pattern = ('scan_minGlobalTH', 'scan_threshold', 'tune_threshold_inj')
+    files = []
+
+    for f in os.listdir(directory):
+        if (os.path.isfile(os.path.join(directory, f)) and
+            f.lower().endswith('.h5') and
+                f.split('.')[-2].endswith(scan_pattern)):
+            files.append(os.path.join(directory, f))
+
+    # Sort via time stamp in file name and put _interpreted files first
+    files = sorted(files, reverse=True)
+
+    # Get latest usable file
+    for file in files:
+        try:   # Check if file can be opened in read only mode (as the scan_base does)
+            f = tb.open_file(file)
+        except (ValueError, tb.exceptions.HDF5ExtError):  # file handle in use
+            continue
+        try:   # Check if file has a configuration_out node
+            f.root.pixel_conf
+            f.close()
+            return file
+        except tb.exceptions.NoSuchNodeError:
+            pass
+        try:   # Check if file has a configuration_in node
+            f.root.pixel_conf_before
+            f.close()
+            return file
+        except tb.exceptions.NoSuchNodeError:
+            pass
+        finally:  # always close the open file
+            f.close()
