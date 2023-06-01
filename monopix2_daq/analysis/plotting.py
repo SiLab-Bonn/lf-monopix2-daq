@@ -156,6 +156,28 @@ class Plotting(object):
         except Exception:
             self.logger.error('Could not create ToT histogram!')
 
+    def create_hit_pix_plot(self):
+            mask = np.full((COL_SIZE, ROW_SIZE), False)
+            sel = np.logical_and(self.EnPre[:] == 1, self.Trim[:] < 17)
+            mask[~sel] = True
+
+            occ_1d = np.ma.masked_array(self.HistOcc[:], mask)
+            data_occ_1d = np.ravel(occ_1d[sel])
+
+            if occ_1d.sum() == 0:
+                plot_range = np.arange(0, 100, 1)
+            else:
+                plot_range = np.arange(0, occ_1d.max() + 0.05 * occ_1d.max(), occ_1d.max() / 100)
+            self._plot_distribution(data=data_occ_1d,
+                                    plot_range=plot_range,
+                                    title='Hits per Pixel',
+                                    x_axis_title='# of Hits',
+                                    y_axis_title='# of Pixel',
+                                    log_y=False,
+                                    align='center',
+                                    suffix='hit_pix',
+                                    fit_gauss=False)
+
     def create_tot_calibration(self):
         try:
             self.scan_parameter_range = np.arange(self.scan_kwargs['injlist_param'][0], self.scan_kwargs['injlist_param'][1], self.scan_kwargs['injlist_param'][2])
@@ -536,7 +558,7 @@ class Plotting(object):
         self._save_plots(fig, suffix=suffix)
 
     def _plot_distribution(self, data, plot_range=None, x_axis_title=None, electron_axis=False, use_electron_offset=False, y_axis_title='N. of hits', 
-                        log_y=False, align='edge', title=None, print_failed_fits=False, suffix=None, unit_raw="V", unit_cal="e^-"):
+                        log_y=False, align='edge', title=None, print_failed_fits=False, suffix=None, unit_raw="V", unit_cal="e^-", fit_gauss=True):
         if plot_range is None:
             diff = np.amax(data) - np.amin(data)
             #if (np.amax(data)) > np.median(data) * 5:
@@ -557,12 +579,16 @@ class Plotting(object):
         p0 = (np.amax(hist), np.nanmean(bins),
               (max(plot_range) - min(plot_range)) / 3)
 
-        try:
-            coeff, _ = curve_fit(self._gauss, bin_centers, hist, p0=p0)
-        except Exception as e:
+        if fit_gauss:
+            try:
+                coeff, _ = curve_fit(self._gauss, bin_centers, hist, p0=p0)
+            except Exception as e:
+                coeff = None
+                self.logger.warning('Gauss fit failed!')
+                self.logger.error(e)
+        else:
             coeff = None
-            self.logger.warning('Gauss fit failed!')
-            self.logger.error(e)
+
 
         if coeff is not None:
             points = np.linspace(min(plot_range), max(plot_range), 500)
