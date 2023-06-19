@@ -21,6 +21,7 @@ local_configuration={
     "th_step": [-0.01,-0.01,-0.01],     # Telescopic steps to reach the minimum global threshold
     "trim_mask": None,                  # TRIM mask (None: Go with TRIM limit, 'middle': Middle TRIM)
     "trim_limit": False,                # TRIM limit (True: High, False: Lowest, "unbiased": Unbiased)
+    "lsb_dac": None,                    # LSB_DAC value set in scan
 
     "start_col": None,
     "stop_col": None,
@@ -31,12 +32,15 @@ local_configuration={
 class ScanMinGlobalTH(scan_base.ScanBase):
     scan_id = "scan_minGlobalTH"
             
-    def scan(self, with_mon=False, monitor_pixel=None, exp_time=1.0, cnt_th=4, mask_factor=0.005, th_start=[1.0, 1.0, 1.0], th_stop=[0.7, 0.7, 0.7], th_step=[-0.01, -0.01, -0.01], trim_mask=None, trim_limit=False, **kwargs):
+    def scan(self, with_mon=False, monitor_pixel=None, exp_time=1.0, cnt_th=4, mask_factor=0.005, th_start=[1.0, 1.0, 1.0], th_stop=[0.7, 0.7, 0.7], th_step=[-0.01, -0.01, -0.01], trim_mask=None, trim_limit=False, lsb_dac=None, **kwargs):
         """
             Execute a search scan for the lowest global threshold.
             This scan tries to find the lowest achievable global thresholds at certain initial TRIM settings for every enabled CSA. 
         """
         th = th_start
+
+        if lsb_dac is not None:
+            self.monopix.set_global_reg(TDAC_LSB=lsb_dac)
 
         # Enable pixels.
         self.monopix.set_preamp_en(self.enable_mask)
