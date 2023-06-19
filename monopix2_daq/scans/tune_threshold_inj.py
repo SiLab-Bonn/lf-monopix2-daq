@@ -120,7 +120,7 @@ class TuneTHinj(scan_base.ScanBase):
         self.monopix.set_tdac(trim_ref, overwrite=True)
 
         # Run the tuning logic with binary search.
-        pbar = tqdm(total=len(tune_steps) * len(inj_mask_list), unit=' Masks')
+        pbar = tqdm(total=int(len(tune_steps) * len(inj_mask_list)), unit=' Masks')
         for scan_param_id, t_step in enumerate(tune_steps):
             data=np.array([],dtype=np.int32)
             # Start Read-out.
@@ -225,6 +225,7 @@ class TuneTHinj(scan_base.ScanBase):
             p.create_config_table()
             p.create_pixel_conf_maps()
             p.create_tdac_plot()
+            p.create_tdac_map()
 
 if __name__ == "__main__":
     from monopix2_daq import monopix2

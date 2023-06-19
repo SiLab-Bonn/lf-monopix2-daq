@@ -362,6 +362,20 @@ class Plotting(object):
         except Exception as e:
             self.logger.error('Could not create noise plot! ({0})'.format(e))
 
+    def create_tdac_map(self):
+        try:
+            mask = self.EnPre.copy().astype(bool)
+            min_tdac, max_tdac = (0, 15)
+            self._plot_fancy_occupancy(hist=np.ma.masked_array(self.Trim, ~mask).T,
+                                       title='TDAC map',
+                                       z_label='TDAC',
+                                       z_min=min(min_tdac, max_tdac),
+                                       z_max=max(min_tdac, max_tdac),
+                                       log_z=False,
+                                       norm_projection=True)
+        except Exception:
+            self.log.error('Could not create TDAC map!')
+
     def create_tdac_plot(self, logscale=False, scan_parameter_name='Scan parameter', electron_axis=False):
         try:
             title = 'TRIM distribution'
@@ -935,7 +949,7 @@ class Plotting(object):
         if max_occ is None:
             max_occ=int(np.max(scurves))
         y_max=int(max_occ*1.10)
-        y_bins = np.arange(-0.5, y_max + 0.5)
+        y_bins = np.arange(0, y_max) # np.arange(-0.5, y_max + 0.5)
 
         param_count = scurves.shape[2]
         hist = np.empty([param_count, y_max], dtype=np.uint32)

@@ -132,7 +132,7 @@ class IV_Curve_Scan(object):
         with tb.open_file(self.output_filename + '.h5', 'r+') as in_file_h5:
             data = in_file_h5.root.IV_data[:]
 
-        x, y, yerr = data['voltage'] * (-1), data['current'] * (-1), data['current_err'] * (-1)
+        x, y, yerr = data['voltage'] * (-1), data['current'] * (-1), np.abs(data['current_err'])
         plt.clf()
         plt.errorbar(x, y, yerr, fmt=',', ls='', label='IV Data')
         plt.title('IV curve of %s (Sensor ID %s)' % (chip_id, sensor_id))
