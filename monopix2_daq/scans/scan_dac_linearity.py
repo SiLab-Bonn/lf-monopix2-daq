@@ -61,9 +61,7 @@ class DAC_linearity_scan(object):
         self.smu = Dut('../periphery.yaml')
         self.smu.init()
         self.smu['SensorBias'].off()
-        print(self.smu['SensorBias'].get_current())
         time.sleep(0.1)
-        logging.info('Initialized sourcemeter: %s' % self.smu['SensorBias'].get_name())
 
         # Initialize and power DUT (LF-Monopix2) to prevent applying HV to unpowered chip
         self.m = monopix2.Monopix2(no_power_reset=False)
@@ -104,7 +102,7 @@ class DAC_linearity_scan(object):
 
         logging.info('Scan complete!')
 
-    def _plot(self, sensor_id, **kwargs):
+    def _plot(self):
 
         def _dac_linearity_plot(data, output_pdf):
             fig = Figure(tight_layout=True)
@@ -119,7 +117,7 @@ class DAC_linearity_scan(object):
 
         output_pdf = backend_pdf.PdfPages(self.output_file_name + '.pdf')
 
-        with tb.open_file('/home/lars/Downloads/DAClinearity_W02-01_unirr.h5', 'r') as in_file:
+        with tb.open_file(self.output_filename + '.h5', 'r') as in_file:
             for table in in_file.root:
                 _dac_linearity_plot(table, output_pdf)
 
