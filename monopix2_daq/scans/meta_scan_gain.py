@@ -17,6 +17,7 @@ meta_configuration={
     "th_step": [-0.01,-0.01,-0.01],     # Telescopic steps to reach the minimum global threshold
     "trim_mask": None,                  # TRIM mask (None: Go with TRIM limit, 'middle': Middle TRIM)
     "trim_limit": False,                # TRIM limit (True: High, False: Lowest, "unbiased": Unbiased)
+    "lsb_dac": None,                    # LSB_DAC value set in scan
 
     ### Threshold Scan
     "inj_lo": 0.2,                          # Fixed value on LF-Monopix2 board for VLo
@@ -49,6 +50,7 @@ matrices_dic = {
 }
 
 for key in matrices_dic:
+    meta_configuration['config_file'] = None
     meta_configuration.update(matrices_dic[key])
     with ScanMinGlobalTH(**meta_configuration) as scan:
         scan.start(**meta_configuration)

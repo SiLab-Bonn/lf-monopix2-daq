@@ -64,7 +64,7 @@ class DAC_linearity_scan(object):
         time.sleep(0.1)
 
         # Initialize and power DUT (LF-Monopix2) to prevent applying HV to unpowered chip
-        self.m = monopix2.Monopix2(no_power_reset=False)
+        self.m = monopix2.Monopix2(no_power_reset=True)
         self.m.init()
         self.m.set_preamp_en(pix='none', overwrite=True)
 
@@ -115,7 +115,7 @@ class DAC_linearity_scan(object):
             ax.legend(loc=2)
             output_pdf.savefig(fig)
 
-        output_pdf = backend_pdf.PdfPages(self.output_file_name + '.pdf')
+        output_pdf = backend_pdf.PdfPages(self.output_filename + '.pdf')
 
         with tb.open_file(self.output_filename + '.h5', 'r') as in_file:
             for table in in_file.root:
