@@ -107,6 +107,7 @@ class Plotting(object):
         self.create_occupancy_map()
         self.create_fancy_occupancy()
         self.create_tot_hist()
+        self.create_hits_per_pixel()
         self.create_pixel_conf_maps()
 
         if self.clustered:
@@ -136,7 +137,7 @@ class Plotting(object):
             else:
                 title = 'Occupancy'
 
-            self._plot_occupancy(hist=self.HistOcc[:].T, suffix='occupancy', title=title, z_max=np.ceil(1.1 * np.amax(self.HistOcc[:])))  # TODO: get mask and enable here
+            self._plot_occupancy(hist=self.HistOcc[:].T, suffix='occupancy', title=title, z_max='maximum')  # TODO: get mask and enable here
         except Exception:
             self.logger.error('Could not create occupancy map!')
 
@@ -433,6 +434,26 @@ class Plotting(object):
         except Exception as e:
             self.logger.error('Could not create TDAC distribution plot! ({0})'.format(e))
 
+    def create_hits_per_pixel(self):
+        try:
+            occ_1d = np.ma.masked_array(self.HistOcc[:], ~(self.EnPre[:].astype(bool))).ravel()
+
+            if occ_1d.sum() == 0:
+                plot_range = np.arange(0, 100, 1)
+            else:
+                plot_range = np.arange(0, occ_1d.max() + 0.05 * occ_1d.max(), occ_1d.max() / 100)
+            self._plot_distribution(data=occ_1d,
+                                    plot_range=plot_range,
+                                    title='Hits per Pixel',
+                                    x_axis_title='# of Hits',
+                                    y_axis_title='# of Pixel',
+                                    log_y=True,
+                                    align='center',
+                                    fit_gauss=False,
+                                    suffix='hit_pix')
+        except Exception:
+            self.log.error('Could not create TDAC map!')
+
     def create_cluster_size_plot(self):
         try:
             self._plot_cl_size(self.HistClusterSize)
@@ -550,7 +571,7 @@ class Plotting(object):
         self._save_plots(fig, suffix=suffix)
 
     def _plot_distribution(self, data, plot_range=None, x_axis_title=None, electron_axis=False, use_electron_offset=False, y_axis_title='N. of hits', 
-                        log_y=False, align='edge', title=None, print_failed_fits=False, suffix=None, unit_raw="V", unit_cal="e^-"):
+                        log_y=False, fit_gauss=True, align='edge', title=None, print_failed_fits=False, suffix=None, unit_raw="V", unit_cal="e^-"):
         if plot_range is None:
             diff = np.amax(data) - np.amin(data)
             #if (np.amax(data)) > np.median(data) * 5:
@@ -571,12 +592,15 @@ class Plotting(object):
         p0 = (np.amax(hist), np.nanmean(bins),
               (max(plot_range) - min(plot_range)) / 3)
 
-        try:
-            coeff, _ = curve_fit(self._gauss, bin_centers, hist, p0=p0)
-        except Exception as e:
+        if fit_gauss:
+            try:
+                coeff, _ = curve_fit(self._gauss, bin_centers, hist, p0=p0)
+            except Exception as e:
+                coeff = None
+                self.logger.warning('Gauss fit failed!')
+                self.logger.error(e)
+        else:
             coeff = None
-            self.logger.warning('Gauss fit failed!')
-            self.logger.error(e)
 
         if coeff is not None:
             points = np.linspace(min(plot_range), max(plot_range), 500)
