@@ -53,15 +53,17 @@ class IV_Curve_Scan(object):
         self.smu = Dut('../periphery.yaml')
         self.smu.init()
         self.smu['SensorBias'].off()
-        self.smu['SensorBias'].set_current_limit(1.15 * max_leakage)
+        self.smu['SensorBias'].set_current_limit(1.2 * max_leakage)
         time.sleep(0.1)
         logging.info('Initialized sourcemeter: %s' % self.smu['SensorBias'].get_name())
 
         # Initialize and power DUT (LF-Monopix2) to prevent applying HV to unpowered chip
         m = monopix2.Monopix2(no_power_reset=False)
         m.init()
+        m.set_preamp_en(pix='none', overwrite=True)
         if set_preamp:
             m.set_preamp_en(pix='all', overwrite=True)
+            time.sleep(90)
         time.sleep(5)
 
     def _scan(self, V_start=-0, V_stop=-10, V_step=-1, V_final=-10, V_max=-100, max_leakage=20e-6, wait_cycle=0.5, n_meas=5, **_):
@@ -125,6 +127,7 @@ class IV_Curve_Scan(object):
 
         logging.info('Scan complete, turning off SMU')
         self.smu['SensorBias'].off()
+        self.smu.close()
 
     def _plot(self, chip_id, sensor_id, **_):
 
@@ -132,7 +135,7 @@ class IV_Curve_Scan(object):
         with tb.open_file(self.output_filename + '.h5', 'r+') as in_file_h5:
             data = in_file_h5.root.IV_data[:]
 
-        x, y, yerr = data['voltage'] * (-1), data['current'] * (-1), data['current_err'] * (-1)
+        x, y, yerr = data['voltage'] * (-1), data['current'] * (-1), np.abs(data['current_err'])
         plt.clf()
         plt.errorbar(x, y, yerr, fmt=',', ls='', label='IV Data')
         plt.title('IV curve of %s (Sensor ID %s)' % (chip_id, sensor_id))

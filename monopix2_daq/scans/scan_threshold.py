@@ -208,6 +208,7 @@ class ScanThreshold(scan_base.ScanBase):
             p.create_noise_plot(scan_parameter_name = "Injection [V]", electron_axis=with_calibration)
             p.create_stacked_threshold_plot(scan_parameter_name = "Injection [V]", electron_axis=with_calibration)
             p.create_tdac_plot()
+            p.create_tdac_map()
             p.create_pixel_conf_maps()
             #p.create_single_scurves(scan_parameter_name="Injection [V]", electron_axis = with_calibration)
 
