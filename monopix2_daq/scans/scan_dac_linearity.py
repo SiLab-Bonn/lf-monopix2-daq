@@ -13,14 +13,16 @@ import monopix2_daq.monopix2 as monopix2
 
 
 scan_config = {
-    'wait_cycle': 0.2,  # Min. delay between current measurements
+    'wait_cycle': 0.1,  # Min. delay between current measurements
     'n_meas': 5,  # Number of current measurements per voltage step
     'reg_start': 0,  # Start value for register setting
     'reg_stop': 64,  # Stop value for register setting
-    'reg_step': 1,  # Register setting step size
+    'reg_step': 2,  # Register setting step size
 
     # Chip info
     'sensor_id': 'W02-01_unirr',
+
+    'output_folder': None
 }
 
 
@@ -49,10 +51,12 @@ class DataTable(tb.IsDescription):
 class DAC_linearity_scan(object):
     scan_id = 'DAC_linearity'
 
-    def __init__(self, sensor_id, **kwargs):
+    def __init__(self, sensor_id, output_folder=None, **kwargs):
 
         # Create and open output file
-        output_folder = os.path.join(os.getcwd(), "output_data", sensor_id)
+        if output_folder is None:
+            output_folder = os.path.join(os.getcwd(), "output_data", sensor_id)
+
         scan_name = "DAClinearity_%s" % (sensor_id)
         self.output_filename = os.path.join(output_folder, scan_name)
         self.output_file = tb.open_file(self.output_filename + '.h5', mode='w', title=self.scan_id)
@@ -60,7 +64,10 @@ class DAC_linearity_scan(object):
         # Initialize SourceMeter Unit (SMU) and turn off HV
         self.smu = Dut('../periphery.yaml')
         self.smu.init()
+        self.smu['SensorBias'].set_voltage(0)
         self.smu['SensorBias'].off()
+        self.smu['Multimeter'].set_voltage(0)
+        self.smu['Multimeter'].on()
         time.sleep(0.1)
 
         # Initialize and power DUT (LF-Monopix2) to prevent applying HV to unpowered chip
@@ -84,8 +91,8 @@ class DAC_linearity_scan(object):
                 time.sleep(.5)
                 currents = []
                 for _ in range(n_meas):
-                    current = float(self.smu['Multimeter'].get_current())
-                    currents.append(current)
+                    current = float(self.smu['Multimeter'].get_current().split(',')[1])
+                    currents.append(abs(current))
                     time.sleep(wait_cycle)
 
                 # Store data

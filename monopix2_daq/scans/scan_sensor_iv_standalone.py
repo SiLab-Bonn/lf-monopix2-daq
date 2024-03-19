@@ -14,15 +14,17 @@ iv_curve_config = {
     'V_stop': -310,  # Stop value for bias voltage
     'V_step': -5,  # Stepsize of bias voltage
     'V_final': 0,  # Return to V_final bias after measurement
-    'V_max': -341,  # Max. value allowed for bias voltage
-    'max_leakage': 20e-6,  # Max. leakage current allowed before aborting scan
-    'wait_cycle': 0.5,  # Min. delay between current measurements
+    'V_max': -465,  # Max. value allowed for bias voltage
+    'max_leakage': 1.5e-6,  # Max. leakage current allowed before aborting scan
+    'wait_cycle': 0.1,  # Min. delay between current measurements
     'n_meas': 5,  # Number of current measurements per voltage step
 
     # Chip and output file info
     'chip_id': 'LF-Monopix2',
     'sensor_id': 'W02-02',
     'set_preamp': False,
+
+    'output_folder': None
 }
 
 
@@ -33,13 +35,23 @@ class DataTable(tb.IsDescription):
     n_meas = tb.Float64Col(pos=3)
 
 
+class DataTable_VDDA(tb.IsDescription):
+    voltage = tb.Float64Col(pos=0)
+    current = tb.Float64Col(pos=1)
+    current_err = tb.Float64Col(pos=2)
+    current_VDDA = tb.Float64Col(pos=3)
+    current_VDDA_err = tb.Float64Col(pos=4)
+    n_meas = tb.Float64Col(pos=5)
+
+
 class IV_Curve_Scan(object):
     scan_id = 'IV_curve'
 
-    def __init__(self, set_preamp, chip_id, sensor_id, max_leakage, **_):
+    def __init__(self, set_preamp, chip_id, sensor_id, max_leakage, output_folder=None, **_):
 
         # Create and open output file
-        output_folder = os.path.join(os.getcwd(), "output_data/IV_curves")
+        if output_folder is None:
+            output_folder = os.path.join(os.getcwd(), "output_data/IV_curves")
         if set_preamp:
             scan_name = "IVcurve_%s_%s_preamp" % (chip_id, sensor_id)
         else:
@@ -49,7 +61,7 @@ class IV_Curve_Scan(object):
 
         self.data = self.output_file.create_table(self.output_file.root, name='IV_data', description=DataTable, title='IVcurve')
 
-        # Initialize SourceMeter Unit (SMU) and turn off HV
+        # Initialize peripheral devices (SourceMeter Unit [SMU], Multimeter) and turn off HV
         self.smu = Dut('../periphery.yaml')
         self.smu.init()
         self.smu['SensorBias'].off()
@@ -70,18 +82,22 @@ class IV_Curve_Scan(object):
         ''' Loop through voltage range and measure current at each step n_meas times
         '''
 
-        voltages = range(V_start, V_stop, V_step)
+        if abs(V_stop) > 50:
+            voltages = np.array([*range(V_start, -50, -2), *range(-50, V_stop - 4 * V_step, V_step), *range(V_stop - 4 * V_step, V_stop, -2)])
+        else:
+            voltages = range(V_start, V_stop, -2)
+        if np.any(voltages > 0):
+            raise ValueError('Voltage has to be negative! Abort to protect device.')
+
         logging.info('Measure IV for V from %i to %i' % (voltages[0], voltages[-1]))
 
         self.smu['SensorBias'].set_voltage(0)
         self.smu['SensorBias'].on()
 
         for voltage in tqdm(voltages, unit='Voltage step'):
-            if voltage > 0:
-                RuntimeError('Voltage has to be negative! Abort to protect device.')
             if abs(voltage) <= abs(V_max):
                 self.smu['SensorBias'].set_voltage(voltage)
-                time.sleep(wait_cycle * 10)
+                time.sleep(wait_cycle * 15)
                 V_currently = voltage
             else:
                 logging.info('Maximum voltage with %f V reached, abort', voltage)
@@ -137,13 +153,14 @@ class IV_Curve_Scan(object):
 
         x, y, yerr = data['voltage'] * (-1), data['current'] * (-1), np.abs(data['current_err'])
         plt.clf()
-        plt.errorbar(x, y, yerr, fmt=',', ls='', label='IV Data')
+        plt.errorbar(x, y, yerr, fmt='.', ls='', label='IV Data')
         plt.title('IV curve of %s (Sensor ID %s)' % (chip_id, sensor_id))
         plt.yscale('log')
         plt.ylabel('Current / A')
         plt.xlabel('Voltage / V')
         plt.grid()
         plt.legend()
+        plt.tight_layout()
         plt.savefig(self.output_filename + '.pdf')
 
 
