@@ -21,7 +21,7 @@ meta_configuration={
 
     ### Threshold Scan
     "inj_lo": 0.2,                          # Fixed value on LF-Monopix2 board for VLo
-    "injlist_param": [0.15,0.7,0.005],       # List of injection values to scan [start,end,step]
+    "injlist_param": [0.10, 0.7, 0.005],       # List of injection values to scan [start,end,step]
     "n_mask_pix": 170,                      # Maximum number of enabled pixels on every injection/TH step
     "inj_n_param": 100,                     # Number of injection pulses per pixel and step
     "c_inj": 2.76e-15,                      # Injection capacitance value in F
@@ -50,6 +50,8 @@ matrices_dic = {
 }
 
 for key in matrices_dic:
+    meta_configuration['trim_mask'] = None
+    meta_configuration['trim_limit'] = False
     meta_configuration['config_file'] = None
     meta_configuration.update(matrices_dic[key])
     with ScanMinGlobalTH(**meta_configuration) as scan:
@@ -67,18 +69,25 @@ for key in matrices_dic:
         scan.plot(**meta_configuration)
 
     # Needed to measure reference current of chip - 1 matrix is sufficient
-    if key == 'matrix134':
-        meta_configuration['trim_mask'] = 0
+    if key in ['matrix134', 'matrix2', 'matrix3']:
+        meta_configuration['trim_mask'] = 15
         meta_configuration['trim_limit'] = None
         with ScanThreshold(**meta_configuration) as scan:
             scan.start(**meta_configuration)
             scan.analyze()
             scan.plot(**meta_configuration)
-        meta_configuration['trim_mask'] = None
-        meta_configuration['trim_limit'] = 'unbiased'
 
+        if key in ['matrix2', 'matrix3']:
+            meta_configuration['trim_mask'] = 0
+            with ScanThreshold(**meta_configuration) as scan:
+                scan.start(**meta_configuration)
+                scan.analyze()
+                scan.plot(**meta_configuration)
+
+    meta_configuration['trim_mask'] = None
+    meta_configuration['trim_limit'] = 'unbiased'
     meta_configuration['config_file'] = scan_utils.get_latest_config_node_from_files(DIRECTORY)
-    meta_configuration['thlist'] = _get_and_increase_thlist(meta_configuration['config_file'], 0.01)
+    meta_configuration['thlist'] = _get_and_increase_thlist(meta_configuration['config_file'], 0.015)
 
     with ScanThreshold(**meta_configuration) as scan:
         scan.start(**meta_configuration)
