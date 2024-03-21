@@ -3,7 +3,7 @@ import numpy as np
 from basil.dut import Dut 
 
 # Initialize SourceMeter Unit (SMU) and turn off HV
-devices = Dut('/home/lars/git/lf-monopix2-daq/monopix2_daq/periphery.yaml')
+devices = Dut('../../periphery.yaml')
 devices.init()
 
 hv_initial = round(float(devices['SensorBias'].get_voltage().split(',')[0]), 0)

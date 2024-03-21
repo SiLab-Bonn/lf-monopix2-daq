@@ -1,17 +1,22 @@
 import time
+import yaml
 import tables as tb
 from basil.dut import Dut 
+
 
 class DataTable(tb.IsDescription):
     timestamp = tb.Int64Col(pos=0)
     voltage = tb.Float16Col(pos=1)
     current = tb.Float16Col(pos=2)
 
+with open('../../testbench.yaml') as tb_file:
+    bench = yaml.full_load(tb_file)
+
 MONITORING_RATE = 5  # in s
-OUTPUT_FILE = '/home/lars/mnt/ceph/lschall/lfmonopix2/TID_irradiation/test/gpac_power_monitor'
+OUTPUT_FILE = bench['general']['output_directory'] + 'gpac_power_monitor'
 
 # Initialize SourceMeter Unit (SMU) and turn off HV
-devices = Dut('/home/lars/git/lf-monopix2-daq/monopix2_daq/periphery.yaml')
+devices = Dut('../../periphery.yaml')
 devices.init()
 
 output_file = tb.open_file(OUTPUT_FILE + '.h5', mode='w', title='GPAC_mon')
@@ -32,6 +37,6 @@ try:
 
         time.sleep(MONITORING_RATE)
 except KeyboardInterrupt:
-    pass
+    output_file.close()
 
 print('Amount of failed data reads: ', failed_data_read)
