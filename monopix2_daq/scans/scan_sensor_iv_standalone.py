@@ -1,5 +1,6 @@
 import os
 import time
+import yaml
 import logging
 import numpy as np
 import tables as tb
@@ -23,8 +24,6 @@ iv_curve_config = {
     'chip_id': 'LF-Monopix2',
     'sensor_id': 'W02-02',
     'set_preamp': False,
-
-    'output_folder': None
 }
 
 
@@ -49,7 +48,11 @@ class IV_Curve_Scan(object):
 
     def __init__(self, set_preamp, chip_id, sensor_id, max_leakage, output_folder=None, **_):
 
+        with open('../testbench.yaml') as in_file:
+            bench = yaml.full_load(in_file)
+
         # Create and open output file
+        output_folder = bench['general']['output_directory']
         if output_folder is None:
             output_folder = os.path.join(os.getcwd(), "output_data/IV_curves")
         if set_preamp:

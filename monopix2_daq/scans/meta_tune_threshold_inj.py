@@ -7,7 +7,7 @@ from monopix2_daq.scans.scan_minGlobalTH import ScanMinGlobalTH
 from monopix2_daq.scans.scan_threshold import ScanThreshold
 from monopix2_daq.scans.tune_threshold_inj import TuneTHinj
 
-with open('/home/lars/git/lf-monopix2-daq/monopix2_daq/testbench.yaml') as tb_file:
+with open('../testbench.yaml') as tb_file:
     bench = yaml.full_load(tb_file)
 
 DIRECTORY = bench['general']['output_directory']

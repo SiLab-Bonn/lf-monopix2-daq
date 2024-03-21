@@ -1,5 +1,6 @@
 import os
 import time
+import yaml
 import logging
 import numpy as np
 import tables as tb
@@ -21,8 +22,6 @@ scan_config = {
 
     # Chip info
     'sensor_id': 'W02-01_unirr',
-
-    'output_folder': None
 }
 
 
@@ -53,7 +52,11 @@ class DAC_linearity_scan(object):
 
     def __init__(self, sensor_id, output_folder=None, **kwargs):
 
+        with open('../testbench.yaml') as in_file:
+            bench = yaml.full_load(in_file)
+
         # Create and open output file
+        output_folder = bench['general']['output_directory']
         if output_folder is None:
             output_folder = os.path.join(os.getcwd(), "output_data", sensor_id)
 
