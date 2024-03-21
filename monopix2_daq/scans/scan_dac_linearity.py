@@ -106,6 +106,7 @@ class DAC_linearity_scan(object):
 
         # Close output file
         self.output_file.close()
+        self.smu['Multimeter'].off()
 
         logging.info('Scan complete!')
 
