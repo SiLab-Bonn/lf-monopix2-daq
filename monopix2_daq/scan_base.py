@@ -161,7 +161,7 @@ class ScanBase(object):
         self.meta_data_table.attrs.chip_props = yaml.dump(self.monopix.chip_props)
         self.meta_data_table.attrs.power_status_before = yaml.dump(self.monopix.power_status())
         self.meta_data_table.attrs.dac_status_before = yaml.dump(self.monopix.dac_status())
-        self.meta_data_table.attrs.temperature_before = yaml.dump({'Chip_Temp': str(self.monopix.get_temperature())})
+        self.meta_data_table.attrs.temperature_before = yaml.dump({'Chip_Temp': str(self.monopix.get_temperature()), 'timestamp': str(time.time())})
         self.pixel_masks_before=self.h5_file.create_group(self.h5_file.root, 'pixel_conf_before', 'Pixel configuration before the scan')
         for name, value in self.monopix.PIXEL_CONF.items():
             self.h5_file.create_carray(self.pixel_masks_before, name=name, title=name, obj=value, filters=self.filter_raw_data)
@@ -197,7 +197,7 @@ class ScanBase(object):
         # Save chip configurations
         self.meta_data_table.attrs.power_status = yaml.dump(self.monopix.power_status())
         self.meta_data_table.attrs.dac_status = yaml.dump(self.monopix.dac_status())
-        self.meta_data_table.attrs.temperature = yaml.dump({'Chip_Temp': str(self.monopix.get_temperature())})
+        self.meta_data_table.attrs.temperature = yaml.dump({'Chip_Temp': str(self.monopix.get_temperature()), 'timestamp': str(time.time())})
         self.pixel_masks=self.h5_file.create_group(self.h5_file.root, 'pixel_conf', 'Pixel configuration at the end of the scan')
         for name, value in self.monopix.PIXEL_CONF.items():
             self.h5_file.create_carray(self.pixel_masks, name=name, title=name, obj=value, filters=self.filter_raw_data)
