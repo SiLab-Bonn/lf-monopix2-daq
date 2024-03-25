@@ -161,6 +161,7 @@ class ScanBase(object):
         self.meta_data_table.attrs.chip_props = yaml.dump(self.monopix.chip_props)
         self.meta_data_table.attrs.power_status_before = yaml.dump(self.monopix.power_status())
         self.meta_data_table.attrs.dac_status_before = yaml.dump(self.monopix.dac_status())
+        self.meta_data_table.attrs.temperature_before = yaml.dump({'Chip_Temp': str(self.monopix.get_temperature())})
         self.pixel_masks_before=self.h5_file.create_group(self.h5_file.root, 'pixel_conf_before', 'Pixel configuration before the scan')
         for name, value in self.monopix.PIXEL_CONF.items():
             self.h5_file.create_carray(self.pixel_masks_before, name=name, title=name, obj=value, filters=self.filter_raw_data)
@@ -184,16 +185,19 @@ class ScanBase(object):
         self.fifo_readout = FifoReadout(self.monopix, logLevel=logLevel, logHandlers=self.log_handlers)
         self.logger.info('Power Status: %s', str(self.monopix.power_status()))
         self.logger.info('DAC Status: %s', str(self.monopix.dac_status()))
+        self.logger.info('Chip Temperature: %s', str(self.monopix.get_temperature()))
         self.monopix.show("none")
         self.scan(**kwargs) 
         self.fifo_readout.print_readout_status()
         self.monopix.show("none")
         self.logger.info('Power Status: %s', str(self.monopix.power_status()))
         self.logger.info('DAC Status: %s', str(self.monopix.dac_status()))
+        self.logger.info('Chip Temperature: %s', str(self.monopix.get_temperature()))
         
         # Save chip configurations
         self.meta_data_table.attrs.power_status = yaml.dump(self.monopix.power_status())
         self.meta_data_table.attrs.dac_status = yaml.dump(self.monopix.dac_status())
+        self.meta_data_table.attrs.temperature = yaml.dump({'Chip_Temp': str(self.monopix.get_temperature())})
         self.pixel_masks=self.h5_file.create_group(self.h5_file.root, 'pixel_conf', 'Pixel configuration at the end of the scan')
         for name, value in self.monopix.PIXEL_CONF.items():
             self.h5_file.create_carray(self.pixel_masks, name=name, title=name, obj=value, filters=self.filter_raw_data)

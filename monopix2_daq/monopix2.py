@@ -1205,21 +1205,24 @@ class Monopix2(Dut):
         temp_mean: double
             Mean measurement of the temperature on the chip in Celsius.
         """
-        vol=self["NTC"].get_voltage()
-        if not (vol>0.5 and vol<1.5):
-            for i in np.arange(200,-200,-2):
-                self["NTC"].set_current(i,unit="uA")
-                self.SET_VALUE["NTC"]=i
+        vol = self["NTC"].get_voltage()
+        if not (vol > 0.5 and vol < 1.5):
+            for i in np.arange(200, -200, -2):
+                self["NTC"].set_current(i, unit="uA")
+                self.SET_VALUE["NTC"] = i
                 time.sleep(0.1)
-                vol=self["NTC"].get_voltage()
+                vol = self["NTC"].get_voltage()
                 if vol>0.7 and vol<1.3:
                     break
-            if abs(i)>190:
+            if abs(i) > 190:
                 self.logger.info("temperature() NTC error")
-        temp=np.empty(10)
+        temp = np.empty(10)
         for i in range(len(temp)):
-            temp[i]=self["NTC"].get_temperature("C")
-        temp_mean=np.average(temp[temp!=float("nan")])
+            temp[i] = self["NTC"].get_temperature("C")
+        temp_mean = np.average(temp[temp!=float("nan")])
+
+        self.SET_VALUE["NTC"] = 5
+        self["NTC"].set_current(5, unit="uA")
         return temp_mean
 
     """
