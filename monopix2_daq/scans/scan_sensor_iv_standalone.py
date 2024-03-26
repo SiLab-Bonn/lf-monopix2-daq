@@ -81,6 +81,8 @@ class IV_Curve_Scan(object):
             time.sleep(90)
         time.sleep(5)
 
+        self.data.attrs.temperature_before = yaml.dump({'Chip_Temp': str(self.monopix.get_temperature()), 'timestamp': str(time.time())})
+
     def _scan(self, V_start=-0, V_stop=-10, V_step=-1, V_final=-10, V_max=-100, max_leakage=20e-6, wait_cycle=0.5, n_meas=5, **_):
         ''' Loop through voltage range and measure current at each step n_meas times
         '''
@@ -134,6 +136,7 @@ class IV_Curve_Scan(object):
             self.data.row.append()
             self.data.flush()
 
+        self.data.attrs.temperature = yaml.dump({'Chip_Temp': str(self.monopix.get_temperature()), 'timestamp': str(time.time())})
         # Close output file
         self.output_file.close()
 

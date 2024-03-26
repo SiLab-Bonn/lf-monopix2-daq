@@ -77,6 +77,7 @@ class DAC_linearity_scan(object):
         self.m = monopix2.Monopix2(no_power_reset=True)
         self.m.init()
         self.m.set_preamp_en(pix='none', overwrite=True)
+        self.output_file.attrs.temperature_before = yaml.dump({'Chip_Temp': str(self.monopix.get_temperature()), 'timestamp': str(time.time())})
 
     def _scan(self, n_meas=5, wait_cycle=0.2, reg_start=0, reg_stop=64, reg_step=1, **kwargs):
 
@@ -107,6 +108,7 @@ class DAC_linearity_scan(object):
                 self.data.row.append()
                 self.data.flush()
 
+        self.output_file.attrs.temperature = yaml.dump({'Chip_Temp': str(self.monopix.get_temperature()), 'timestamp': str(time.time())})
         # Close output file
         self.output_file.close()
         self.smu['Multimeter'].off()
